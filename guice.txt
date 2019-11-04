@@ -1,0 +1,3569 @@
+AbstractModule (/core/src/com/google/inject/AbstractModule.java)/**
+ * A support class for {@link Module}s which reduces repetition and results in a more readable
+ * configuration. Simply extend this class, implement {@link #configure()}, and call the inherited
+ * methods which mirror those found in {@link Binder}. For example:
+ *
+ * <pre>
+ * public class MyModule extends AbstractModule {
+ *   protected void configure() {
+ *     bind(Service.class).to(ServiceImpl.class).in(Singleton.class);
+ *     bind(CreditCardPaymentService.class);
+ *     bind(PaymentService.class).to(CreditCardPaymentService.class);
+ *     bindConstant().annotatedWith(Names.named("port")).to(8080);
+ *   }
+ * }
+ * </pre>
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+AnnotatedBindingBuilder (/core/src/com/google/inject/binder/AnnotatedBindingBuilder.java)/**
+ * See the EDSL examples at {@link com.google.inject.Binder}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+AnnotatedConstantBindingBuilder (/core/src/com/google/inject/binder/AnnotatedConstantBindingBuilder.java)/**
+ * See the EDSL examples at {@link com.google.inject.Binder}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+AnnotatedElementBuilder (/core/src/com/google/inject/binder/AnnotatedElementBuilder.java)/**
+ * See the EDSL examples at {@link com.google.inject.Binder}.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+ConstantBindingBuilder (/core/src/com/google/inject/binder/ConstantBindingBuilder.java)/** Binds to a constant value. */
+LinkedBindingBuilder (/core/src/com/google/inject/binder/LinkedBindingBuilder.java)/**
+ * See the EDSL examples at {@link com.google.inject.Binder}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+ScopedBindingBuilder (/core/src/com/google/inject/binder/ScopedBindingBuilder.java)/**
+ * See the EDSL examples at {@link com.google.inject.Binder}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Binder (/core/src/com/google/inject/Binder.java)/**
+ * Collects configuration information (primarily <i>bindings</i>) which will be used to create an
+ * {@link Injector}. Guice provides this object to your application's {@link Module} implementors so
+ * they may each contribute their own bindings and other registrations.
+ *
+ * <h3>The Guice Binding EDSL</h3>
+ *
+ * Guice uses an <i>embedded domain-specific language</i>, or EDSL, to help you create bindings
+ * simply and readably. This approach is great for overall usability, but it does come with a small
+ * cost: <b>it is difficult to learn how to use the Binding EDSL by reading method-level
+ * javadocs</b>. Instead, you should consult the series of examples below. To save space, these
+ * examples omit the opening {@code binder}, just as you will if your module extends {@link
+ * AbstractModule}.
+ *
+ * <pre>
+ *     bind(ServiceImpl.class);</pre>
+ *
+ * This statement does essentially nothing; it "binds the {@code ServiceImpl} class to itself" and
+ * does not change Guice's default behavior. You may still want to use this if you prefer your
+ * {@link Module} class to serve as an explicit <i>manifest</i> for the services it provides. Also,
+ * in rare cases, Guice may be unable to validate a binding at injector creation time unless it is
+ * given explicitly.
+ *
+ * <pre>
+ *     bind(Service.class).to(ServiceImpl.class);</pre>
+ *
+ * Specifies that a request for a {@code Service} instance with no binding annotations should be
+ * treated as if it were a request for a {@code ServiceImpl} instance. This <i>overrides</i> the
+ * function of any {@link ImplementedBy @ImplementedBy} or {@link ProvidedBy @ProvidedBy}
+ * annotations found on {@code Service}, since Guice will have already "moved on" to {@code
+ * ServiceImpl} before it reaches the point when it starts looking for these annotations.
+ *
+ * <pre>
+ *     bind(Service.class).toProvider(ServiceProvider.class);</pre>
+ *
+ * In this example, {@code ServiceProvider} must extend or implement {@code Provider<Service>}. This
+ * binding specifies that Guice should resolve an unannotated injection request for {@code Service}
+ * by first resolving an instance of {@code ServiceProvider} in the regular way, then calling {@link
+ * Provider#get get()} on the resulting Provider instance to obtain the {@code Service} instance.
+ *
+ * <p>The {@link Provider} you use here does not have to be a "factory"; that is, a provider which
+ * always <i>creates</i> each instance it provides. However, this is generally a good practice to
+ * follow. You can then use Guice's concept of {@link Scope scopes} to guide when creation should
+ * happen -- "letting Guice work for you".
+ *
+ * <pre>
+ *     bind(Service.class).annotatedWith(Red.class).to(ServiceImpl.class);</pre>
+ *
+ * Like the previous example, but only applies to injection requests that use the binding annotation
+ * {@code @Red}. If your module also includes bindings for particular <i>values</i> of the
+ * {@code @Red} annotation (see below), then this binding will serve as a "catch-all" for any values
+ * of {@code @Red} that have no exact match in the bindings.
+ *
+ * <pre>
+ *     bind(ServiceImpl.class).in(Singleton.class);
+ *     // or, alternatively
+ *     bind(ServiceImpl.class).in(Scopes.SINGLETON);</pre>
+ *
+ * Either of these statements places the {@code ServiceImpl} class into singleton scope. Guice will
+ * create only one instance of {@code ServiceImpl} and will reuse it for all injection requests of
+ * this type. Note that it is still possible to bind another instance of {@code ServiceImpl} if the
+ * second binding is qualified by an annotation as in the previous example. Guice is not overly
+ * concerned with <i>preventing</i> you from creating multiple instances of your "singletons", only
+ * with <i>enabling</i> your application to share only one instance if that's all you tell Guice you
+ * need.
+ *
+ * <p><b>Note:</b> a scope specified in this way <i>overrides</i> any scope that was specified with
+ * an annotation on the {@code ServiceImpl} class.
+ *
+ * <p>Besides {@link Singleton}/{@link Scopes#SINGLETON}, there are servlet-specific scopes
+ * available in {@code com.google.inject.servlet.ServletScopes}, and your Modules can contribute
+ * their own custom scopes for use here as well.
+ *
+ * <pre>
+ *     bind(new TypeLiteral&lt;PaymentService&lt;CreditCard>>() {})
+ *         .to(CreditCardPaymentService.class);</pre>
+ *
+ * This admittedly odd construct is the way to bind a parameterized type. It tells Guice how to
+ * honor an injection request for an element of type {@code PaymentService<CreditCard>}. The class
+ * {@code CreditCardPaymentService} must implement the {@code PaymentService<CreditCard>} interface.
+ * Guice cannot currently bind or inject a generic type, such as {@code Set<E>}; all type parameters
+ * must be fully specified.
+ *
+ * <pre>
+ *     bind(Service.class).toInstance(new ServiceImpl());
+ *     // or, alternatively
+ *     bind(Service.class).toInstance(SomeLegacyRegistry.getService());</pre>
+ *
+ * In this example, your module itself, <i>not Guice</i>, takes responsibility for obtaining a
+ * {@code ServiceImpl} instance, then asks Guice to always use this single instance to fulfill all
+ * {@code Service} injection requests. When the {@link Injector} is created, it will automatically
+ * perform field and method injection for this instance, but any injectable constructor on {@code
+ * ServiceImpl} is simply ignored. Note that using this approach results in "eager loading" behavior
+ * that you can't control.
+ *
+ * <pre>
+ *     bindConstant().annotatedWith(ServerHost.class).to(args[0]);</pre>
+ *
+ * Sets up a constant binding. Constant injections must always be annotated. When a constant
+ * binding's value is a string, it is eligible for conversion to all primitive types, to {@link
+ * Enum#valueOf(Class, String) all enums}, and to {@link Class#forName class literals}. Conversions
+ * for other types can be configured using {@link #convertToTypes(Matcher, TypeConverter)
+ * convertToTypes()}.
+ *
+ * <pre>
+ *   {@literal @}Color("red") Color red; // A member variable (field)
+ *    . . .
+ *     red = MyModule.class.getDeclaredField("red").getAnnotation(Color.class);
+ *     bind(Service.class).annotatedWith(red).to(RedService.class);</pre>
+ *
+ * If your binding annotation has parameters you can apply different bindings to different specific
+ * values of your annotation. Getting your hands on the right instance of the annotation is a bit of
+ * a pain -- one approach, shown above, is to apply a prototype annotation to a field in your module
+ * class, so that you can read this annotation instance and give it to Guice.
+ *
+ * <pre>
+ *     bind(Service.class)
+ *         .annotatedWith(Names.named("blue"))
+ *         .to(BlueService.class);</pre>
+ *
+ * Differentiating by names is a common enough use case that we provided a standard annotation,
+ * {@link com.google.inject.name.Named @Named}. Because of Guice's library support, binding by name
+ * is quite easier than in the arbitrary binding annotation case we just saw. However, remember that
+ * these names will live in a single flat namespace with all the other names used in your
+ * application.
+ *
+ * <pre>
+ *     Constructor<T> loneCtor = getLoneCtorFromServiceImplViaReflection();
+ *     bind(ServiceImpl.class)
+ *         .toConstructor(loneCtor);</pre>
+ *
+ * In this example, we directly tell Guice which constructor to use in a concrete class
+ * implementation. It means that we do not need to place {@literal @}Inject on any of the
+ * constructors and that Guice treats the provided constructor as though it were annotated so. It is
+ * useful for cases where you cannot modify existing classes and is a bit simpler than using a
+ * {@link Provider}.
+ *
+ * <p>The above list of examples is far from exhaustive. If you can think of how the concepts of one
+ * example might coexist with the concepts from another, you can most likely weave the two together.
+ * If the two concepts make no sense with each other, you most likely won't be able to do it. In a
+ * few cases Guice will let something bogus slip by, and will then inform you of the problems at
+ * runtime, as soon as you try to create your Injector.
+ *
+ * <p>The other methods of Binder such as {@link #bindScope}, {@link #bindInterceptor}, {@link
+ * #install}, {@link #requestStaticInjection}, {@link #addError} and {@link #currentStage} are not
+ * part of the Binding EDSL; you can learn how to use these in the usual way, from the method
+ * documentation.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @author kevinb@google.com (Kevin Bourrillion)
+ */
+Binding (/core/src/com/google/inject/Binding.java)/**
+ * A mapping from a key (type and optional annotation) to the strategy for getting instances of the
+ * type. This interface is part of the introspection API and is intended primarily for use by tools.
+ *
+ * <p>Bindings are created in several ways:
+ *
+ * <ul>
+ * <li>Explicitly in a module, via {@code bind()} and {@code bindConstant()} statements:
+ *     <pre>
+ *     bind(Service.class).annotatedWith(Red.class).to(ServiceImpl.class);
+ *     bindConstant().annotatedWith(ServerHost.class).to(args[0]);</pre>
+ *
+ * <li>Implicitly by the Injector by following a type's {@link ImplementedBy pointer} {@link
+ *     ProvidedBy annotations} or by using its {@link Inject annotated} or default constructor.
+ * <li>By converting a bound instance to a different type.
+ * <li>For {@link Provider providers}, by delegating to the binding for the provided type.
+ * </ul>
+ *
+ * <p>They exist on both modules and on injectors, and their behaviour is different for each:
+ *
+ * <ul>
+ * <li><strong>Module bindings</strong> are incomplete and cannot be used to provide instances. This
+ *     is because the applicable scopes and interceptors may not be known until an injector is
+ *     created. From a tool's perspective, module bindings are like the injector's source code. They
+ *     can be inspected or rewritten, but this analysis must be done statically.
+ * <li><strong>Injector bindings</strong> are complete and valid and can be used to provide
+ *     instances. From a tools' perspective, injector bindings are like reflection for an injector.
+ *     They have full runtime information, including the complete graph of injections necessary to
+ *     satisfy a binding.
+ * </ul>
+ *
+ * @param <T> the bound type. The injected is always assignable to this type.
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ConfigurationException (/core/src/com/google/inject/ConfigurationException.java)/**
+ * Thrown when a programming error such as a misplaced annotation, illegal binding, or unsupported
+ * scope is found. Clients should catch this exception, log it, and stop execution.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+CreationException (/core/src/com/google/inject/CreationException.java)/**
+ * Thrown when errors occur while creating a {@link Injector}. Includes a list of encountered
+ * errors. Clients should catch this exception, log it, and stop execution.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Guice (/core/src/com/google/inject/Guice.java)/**
+ * The entry point to the Guice framework. Creates {@link Injector}s from {@link Module}s.
+ *
+ * <p>Guice supports a model of development that draws clear boundaries between APIs,
+ * Implementations of these APIs, Modules which configure these implementations, and finally
+ * Applications which consist of a collection of Modules. It is the Application, which typically
+ * defines your {@code main()} method, that bootstraps the Guice Injector using the {@code Guice}
+ * class, as in this example:
+ *
+ * <pre>
+ *     public class FooApplication {
+ *       public static void main(String[] args) {
+ *         Injector injector = Guice.createInjector(
+ *             new ModuleA(),
+ *             new ModuleB(),
+ *             . . .
+ *             new FooApplicationFlagsModule(args)
+ *         );
+ *
+ *         // Now just bootstrap the application and you're done
+ *         FooStarter starter = injector.getInstance(FooStarter.class);
+ *         starter.runApplication();
+ *       }
+ *     }
+ * </pre>
+ */
+Injector (/core/src/com/google/inject/Injector.java)/**
+ * Builds the graphs of objects that make up your application. The injector tracks the dependencies
+ * for each type and uses bindings to inject them. This is the core of Guice, although you rarely
+ * interact with it directly. This "behind-the-scenes" operation is what distinguishes dependency
+ * injection from its cousin, the service locator pattern.
+ *
+ * <p>Contains several default bindings:
+ *
+ * <ul>
+ *   <li>This {@link Injector} instance itself
+ *   <li>A {@code Provider<T>} for each binding of type {@code T}
+ *   <li>The {@link java.util.logging.Logger} for the class being injected
+ *   <li>The {@link Stage} in which the Injector was created
+ * </ul>
+ *
+ * Injectors are created using the facade class {@link Guice}.
+ *
+ * <p>An injector can also {@link #injectMembers(Object) inject the dependencies} of
+ * already-constructed instances. This can be used to interoperate with objects created by other
+ * frameworks or services.
+ *
+ * <p>Injectors can be {@link #createChildInjector(Iterable) hierarchical}. Child injectors inherit
+ * the configuration of their parent injectors, but the converse does not hold.
+ *
+ * <p>The injector's {@link #getBindings() internal bindings} are available for introspection. This
+ * enables tools and extensions to operate on an injector reflectively.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+AbstractBindingBuilder (/core/src/com/google/inject/internal/AbstractBindingBuilder.java)/**
+ * Bind a value or constant.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Processor (/core/src/com/google/inject/internal/AbstractBindingProcessor.java)/**
+   * Processor for visiting bindings. Each overriden method that wants to actually process the
+   * binding should call prepareBinding first.
+   */
+AbstractBindingProcessor (/core/src/com/google/inject/internal/AbstractBindingProcessor.java)/**
+ * Guarantees that processing of Binding elements happens in a sane way.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+AbstractProcessor (/core/src/com/google/inject/internal/AbstractProcessor.java)/**
+ * Abstract base class for creating an injector from module elements.
+ *
+ * <p>Extending classes must return {@code true} from any overridden {@code visit*()} methods, in
+ * order for the element processor to remove the handled element.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+AnnotationChecker (/core/src/com/google/inject/internal/Annotations.java)/** Checks for the presence of annotations. Caches results because Android doesn't. */
+Annotations (/core/src/com/google/inject/internal/Annotations.java)/**
+ * Annotation utilities.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+BindingBuilder (/core/src/com/google/inject/internal/BindingBuilder.java)/**
+ * Bind a non-constant key.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+BindingImpl (/core/src/com/google/inject/internal/BindingImpl.java)/** @author crazybob@google.com (Bob Lee) */
+BindingProcessor (/core/src/com/google/inject/internal/BindingProcessor.java)/**
+ * Handles {@link Binder#bind} and {@link Binder#bindConstant} elements.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+BoundProviderFactory (/core/src/com/google/inject/internal/BoundProviderFactory.java)/** Delegates to a custom factory which is also bound in the injector. */
+BridgeClassLoader (/core/src/com/google/inject/internal/BytecodeGen.java)/**
+   * Loader for Guice-generated classes. For referenced classes, this delegates to either either the
+   * user's classloader (which is the parent of this classloader) or Guice's class loader.
+   */
+BytecodeGen (/core/src/com/google/inject/internal/BytecodeGen.java)/**
+ * Utility methods for runtime code generation and class loading. We use this stuff for {@link
+ * net.sf.cglib.reflect.FastClass faster reflection}, {@link net.sf.cglib.proxy.Enhancer method
+ * interceptors} and to proxy circular dependencies.
+ *
+ * <p>When loading classes, we need to be careful of:
+ *
+ * <ul>
+ * <li><strong>Memory leaks.</strong> Generated classes need to be garbage collected in long-lived
+ *     applications. Once an injector and any instances it created can be garbage collected, the
+ *     corresponding generated classes should be collectable.
+ * <li><strong>Visibility.</strong> Containers like <code>OSGi</code> use class loader boundaries to
+ *     enforce modularity at runtime.
+ * </ul>
+ *
+ * <p>For each generated class, there's multiple class loaders involved:
+ *
+ * <ul>
+ * <li><strong>The related class's class loader.</strong> Every generated class services exactly one
+ *     user-supplied class. This class loader must be used to access members with protected and
+ *     package visibility.
+ * <li><strong>Guice's class loader.</strong>
+ * <li><strong>Our bridge class loader.</strong> This is a child of the user's class loader. It
+ *     selectively delegates to either the user's class loader (for user classes) or the Guice class
+ *     loader (for internal classes that are used by the generated classes). This class loader that
+ *     owns the classes generated by Guice.
+ * </ul>
+ *
+ * @author mcculls@gmail.com (Stuart McCulloch)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+CircularDependencyProxy (/core/src/com/google/inject/internal/CircularDependencyProxy.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ConstantBindingBuilderImpl (/core/src/com/google/inject/internal/ConstantBindingBuilderImpl.java)/**
+ * Bind a constant.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ConstantFactory (/core/src/com/google/inject/internal/ConstantFactory.java)/** @author crazybob@google.com (Bob Lee) */
+ConstructionContext (/core/src/com/google/inject/internal/ConstructionContext.java)/**
+ * Context of a dependency construction. Used to manage circular references.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+ConstructionProxy (/core/src/com/google/inject/internal/ConstructionProxy.java)/**
+ * Proxies calls to a {@link java.lang.reflect.Constructor} for a class {@code T}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+ConstructionProxyFactory (/core/src/com/google/inject/internal/ConstructionProxyFactory.java)/**
+ * Creates {@link ConstructionProxy} instances.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+ConstructorInjector (/core/src/com/google/inject/internal/ConstructorInjector.java)/**
+ * Creates instances using an injectable constructor. After construction, all injectable fields and
+ * methods are injected.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+ConstructorInjectorStore (/core/src/com/google/inject/internal/ConstructorInjectorStore.java)/**
+ * Constructor injectors by type.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+CreationListener (/core/src/com/google/inject/internal/CreationListener.java)/** Something that is notified upon creation. */
+ReentrantCycleDetectingLock (/core/src/com/google/inject/internal/CycleDetectingLock.java)/** The implementation for {@link CycleDetectingLock}. */
+CycleDetectingLockFactory (/core/src/com/google/inject/internal/CycleDetectingLock.java)/**
+   * Wraps locks so they would never cause a deadlock. On each {@link
+   * CycleDetectingLock#lockOrDetectPotentialLocksCycle} we check for dependency cycles within locks
+   * created by the same factory. Either we detect a cycle and return it or take it atomically.
+   *
+   * <p>Important to note that we do not prevent deadlocks in the client code. As an example: Thread
+   * A takes lock L and creates singleton class CA depending on the singleton class CB. Meanwhile
+   * thread B is creating class CB and is waiting on the lock L. Issue happens due to client code
+   * creating interdependent classes and using locks, where no guarantees on the creation order from
+   * Guice are provided.
+   *
+   * <p>Instances of these locks are not intended to be exposed outside of {@link SingletonScope}.
+   */
+CycleDetectingLock (/core/src/com/google/inject/internal/CycleDetectingLock.java)/**
+ * Simplified version of {@link Lock} that is special due to how it handles deadlocks detection.
+ *
+ * <p>Is an inherent part of {@link SingletonScope}, moved into a upper level class due to its size
+ * and complexity.
+ *
+ * @param <ID> Lock identification provided by the client, is returned unmodified to the client when
+ *     lock cycle is detected to identify it. Only toString() needs to be implemented. Lock
+ *     references this object internally, for the purposes of Garbage Collection you should not use
+ *     heavy IDs. Lock is referenced by a lock factory as long as it's owned by a thread.
+ * @see SingletonScope
+ * @see com.google.inject.internal.CycleDetectingLock.CycleDetectingLockFactory
+ * @author timofeyb (Timothy Basanov)
+ */
+DeclaredMembers (/core/src/com/google/inject/internal/DeclaredMembers.java)/**
+ * Utility class for retrieving declared fields or methods in a particular order, because the JVM
+ * doesn't guarantee ordering for listing declared methods. We don't externally guarantee an
+ * ordering, but having a consistent ordering allows deterministic behavior and simpler tests.
+ */
+FastClassProxy (/core/src/com/google/inject/internal/DefaultConstructionProxyFactory.java)/** A {@link ConstructionProxy} that uses FastClass to invoke the constructor. */
+DefaultConstructionProxyFactory (/core/src/com/google/inject/internal/DefaultConstructionProxyFactory.java)/**
+ * Produces construction proxies that invoke the class constructor.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+DeferredLookups (/core/src/com/google/inject/internal/DeferredLookups.java)/**
+ * Returns providers and members injectors that haven't yet been initialized. As a part of injector
+ * creation it's necessary to {@link #initialize initialize} these lookups.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+DelayedInitialize (/core/src/com/google/inject/internal/DelayedInitialize.java)/**
+ * Something that needs some delayed initialization, typically a binding or internal factory that
+ * needs to be created & put into the bindings map & then initialized later.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+EncounterImpl (/core/src/com/google/inject/internal/EncounterImpl.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ErrorHandler (/core/src/com/google/inject/internal/ErrorHandler.java)/**
+ * Handles errors in the Injector.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Errors (/core/src/com/google/inject/internal/Errors.java)/**
+ * A collection of error messages. If this type is passed as a method parameter, the method is
+ * considered to have executed successfully only if new errors were not added to this collection.
+ *
+ * <p>Errors can be chained to provide additional context. To add context, call {@link #withSource}
+ * to create a new Errors instance that contains additional context. All messages added to the
+ * returned instance will contain full context.
+ *
+ * <p>To avoid messages with redundant context, {@link #withSource} should be added sparingly. A
+ * good rule of thumb is to assume a method's caller has already specified enough context to
+ * identify that method. When calling a method that's defined in a different context, call that
+ * method with an errors object that includes its context.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ErrorsException (/core/src/com/google/inject/internal/ErrorsException.java)/**
+ * Indicates that a result could not be returned while preparing or resolving a binding. The caller
+ * should {@link Errors#merge(Errors) merge} the errors from this exception with their existing
+ * errors.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ExposedKeyFactory (/core/src/com/google/inject/internal/ExposedKeyFactory.java)/**
+ * This factory exists in a parent injector. When invoked, it retrieves its value from a child
+ * injector.
+ */
+ExposureBuilder (/core/src/com/google/inject/internal/ExposureBuilder.java)/** For private binder's expose() method. */
+FactoryProxy (/core/src/com/google/inject/internal/FactoryProxy.java)/**
+ * A placeholder which enables us to swap in the real factory once the injector is created. Used for
+ * a linked binding, so that getting the linked binding returns the link's factory.
+ */
+FailableCache (/core/src/com/google/inject/internal/FailableCache.java)/**
+ * Lazily creates (and caches) values for keys. If creating the value fails (with errors), an
+ * exception is thrown on retrieval.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Indexer (/core/src/com/google/inject/internal/Indexer.java)/**
+ * Visits bindings to return a {@code IndexedBinding} that can be used to emulate the binding
+ * deduplication that Guice internally performs.
+ *
+ * <p>Note: simply using equals/hashCode on the BindingImpls doesn't work because they all have
+ * unique annotations. This works around that by reimplementing equality semantics that ignores
+ * {@link Element#uniqueId()}. A better solution might be to introduce the idea of an 'anonymous'
+ * binding to guice, that might support this usecase directly.
+ */
+InheritingState (/core/src/com/google/inject/internal/InheritingState.java)/** @author jessewilson@google.com (Jesse Wilson) */
+Initializable (/core/src/com/google/inject/internal/Initializable.java)/**
+ * Holds a reference that requires initialization to be performed before it can be used.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Initializables (/core/src/com/google/inject/internal/Initializables.java)/** @author jessewilson@google.com (Jesse Wilson) */
+Initializer (/core/src/com/google/inject/internal/Initializer.java)/**
+ * Manages and injects instances at injector-creation time. This is made more complicated by
+ * instances that request other instances while they're being injected. We overcome this by using
+ * {@link Initializable}, which attempts to perform injection before use.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+StaticInjection (/core/src/com/google/inject/internal/InjectionRequestProcessor.java)/** A requested static injection. */
+InjectionRequestProcessor (/core/src/com/google/inject/internal/InjectionRequestProcessor.java)/**
+ * Handles {@code Binder.requestInjection} and {@code Binder.requestStaticInjection} commands.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @author mikeward@google.com (Mike Ward)
+ */
+InjectorOptions (/core/src/com/google/inject/internal/InjectorImpl.java)/** Options that control how the injector behaves. */
+MethodInvoker (/core/src/com/google/inject/internal/InjectorImpl.java)/** Invokes a method. */
+InjectorImpl (/core/src/com/google/inject/internal/InjectorImpl.java)/**
+ * Default {@link Injector} implementation.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+InjectorOptionsProcessor (/core/src/com/google/inject/internal/InjectorOptionsProcessor.java)/**
+ * A processor to gather injector options.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+InjectorShell (/core/src/com/google/inject/internal/InjectorShell.java)/**
+ * A partially-initialized injector. See {@link InternalInjectorCreator}, which uses this to build a
+ * tree of injectors in batch.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+InterceptorBindingProcessor (/core/src/com/google/inject/internal/InterceptorBindingProcessor.java)/**
+ * Handles {@code Binder.bindInterceptor} commands.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+InterceptorStackCallback (/core/src/com/google/inject/internal/InterceptorStackCallback.java)/**
+ * Intercepts a method with a stack of interceptors.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+InternalContext (/core/src/com/google/inject/internal/InternalContext.java)/**
+ * Internal context. Used to coordinate injections and support circular dependencies.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+InternalFactory (/core/src/com/google/inject/internal/InternalFactory.java)/**
+ * Creates objects which will be injected.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+InternalFactoryToInitializableAdapter (/core/src/com/google/inject/internal/InternalFactoryToInitializableAdapter.java)/**
+ * Adapts {@link ProviderInstanceBinding} providers, ensuring circular proxies fail (or proxy)
+ * properly.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+InternalFactoryToProviderAdapter (/core/src/com/google/inject/internal/InternalFactoryToProviderAdapter.java)/** @author crazybob@google.com (Bob Lee) */
+InternalFlags (/core/src/com/google/inject/internal/InternalFlags.java)/**
+ * Contains flags for Guice.
+ */
+ToolStageInjector (/core/src/com/google/inject/internal/InternalInjectorCreator.java)/** {@link Injector} exposed to users in {@link Stage#TOOL}. */
+InternalInjectorCreator (/core/src/com/google/inject/internal/InternalInjectorCreator.java)/**
+ * Builds a tree of injectors. This is a primary injector, plus child injectors needed for each
+ * {@code Binder.newPrivateBinder() private environment}. The primary injector is not necessarily a
+ * top-level injector.
+ *
+ * <p>Injector construction happens in two phases.
+ *
+ * <ol>
+ *   <li>Static building. In this phase, we interpret commands, create bindings, and inspect
+ *       dependencies. During this phase, we hold a lock to ensure consistency with parent
+ *       injectors. No user code is executed in this phase.
+ *   <li>Dynamic injection. In this phase, we call user code. We inject members that requested
+ *       injection. This may require user's objects be created and their providers be called. And we
+ *       create eager singletons. In this phase, user code may have started other threads. This
+ *       phase is not executed for injectors created using {@link Stage#TOOL the tool stage}
+ * </ol>
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Factory (/core/src/com/google/inject/internal/InternalProviderInstanceBindingImpl.java)/**
+   * A base factory implementation. Any Factories that delegate to other bindings should use the
+   * {@code CyclicFactory} subclass, but trivial factories can use this one.
+   */
+CyclicFactory (/core/src/com/google/inject/internal/InternalProviderInstanceBindingImpl.java)/**
+   * An base factory implementation that can be extended to provide a specialized implementation of
+   * a {@link ProviderWithExtensionVisitor} and also implements {@link InternalFactory}
+   */
+InternalProviderInstanceBindingImpl (/core/src/com/google/inject/internal/InternalProviderInstanceBindingImpl.java)/**
+ * A {@link ProviderInstanceBindingImpl} for implementing 'native' guice extensions.
+ *
+ * <p>Beyond the normal binding contract that is mostly handled by our baseclass, this also
+ * implements {@link DelayedInitialize} in order to initialize factory state.
+ */
+InternalProvisionException (/core/src/com/google/inject/internal/InternalProvisionException.java)/**
+ * A checked exception for provisioning errors.
+ *
+ * <p>This is the internal dual of {@link ProvisionException}, similar to the relationship between
+ * {@link com.google.inject.ConfigurationException} and {@link ErrorsException}. This is useful for
+ * several reasons:
+ *
+ * <ul>
+ *   <li>Since it is a checked exception, we get some assistance from the java compiler in ensuring
+ *       that we correctly handle it everywhere. ProvisionException is unchecked.
+ *   <li>Since this is an internal package, we can add useful construction and mutation APIs that
+ *       would be undesirable in a public supported API.
+ * </ul>
+ *
+ * <p>This exception will be thrown when errors are encountered during provisioning, ErrorsException
+ * will continue to be used for errors that are encountered during provisioning and both make use of
+ * the {@link Message} as the core model.
+ *
+ * <p>NOTE: this object stores a list of messages but in the most common case the cardinality will
+ * be 1. The only time that multiple errors might be reported via this mechanism is when {@link
+ * #errorInUserCode} is called with an exception that holds multiple errors (like
+ * ProvisionException).
+ */
+ListenerBindingProcessor (/core/src/com/google/inject/internal/ListenerBindingProcessor.java)/**
+ * Handles {@code Binder#bindListener} commands.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+LookupProcessor (/core/src/com/google/inject/internal/LookupProcessor.java)/**
+ * Handles {@code Binder.getProvider} and {@code Binder.getMembersInjector(TypeLiteral)} commands.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Lookups (/core/src/com/google/inject/internal/Lookups.java)/**
+ * Accessors for providers and members injectors. The returned values will not be functional until
+ * the injector has been created.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+MembersInjectorImpl (/core/src/com/google/inject/internal/MembersInjectorImpl.java)/**
+ * Injects members of instances of a given type.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+MembersInjectorStore (/core/src/com/google/inject/internal/MembersInjectorStore.java)/**
+ * Members injectors by type.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+MessageProcessor (/core/src/com/google/inject/internal/MessageProcessor.java)/**
+ * Handles {@code Binder.addError} commands.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Messages (/core/src/com/google/inject/internal/Messages.java)/** Utility methods for {@link Message} objects */
+MethodAspect (/core/src/com/google/inject/internal/MethodAspect.java)/**
+ * Ties a matcher to a method interceptor.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+ModuleAnnotatedMethodScannerProcessor (/core/src/com/google/inject/internal/ModuleAnnotatedMethodScannerProcessor.java)/**
+ * Handles {@code Binder.scanModulesForAnnotatedMethods} commands.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+WildcardTypeImpl (/core/src/com/google/inject/internal/MoreTypes.java)/**
+   * The WildcardType interface supports multiple upper bounds and multiple lower bounds. We only
+   * support what the Java 6 language needs - at most one bound. If a lower bound is set, the upper
+   * bound must be Object.class.
+   */
+CompositeType (/core/src/com/google/inject/internal/MoreTypes.java)/** A type formed from other types, such as arrays, parameterized types or wildcard types */
+MoreTypes (/core/src/com/google/inject/internal/MoreTypes.java)/**
+ * Static methods for working with types that we aren't publishing in the public {@code Types} API.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Nullability (/core/src/com/google/inject/internal/Nullability.java)/**
+ * Whether a member supports null values injected.
+ *
+ * <p>Support for {@code Nullable} annotations in Guice is loose. Any annotation type whose
+ * simplename is "Nullable" is sufficient to indicate support for null values injected.
+ *
+ * <p>This allows support for JSR-305's <a
+ * href="http://groups.google.com/group/jsr-305/web/proposed-annotations">
+ * javax.annotation.meta.Nullable</a> annotation and IntelliJ IDEA's <a
+ * href="http://www.jetbrains.com/idea/documentation/howto.html">
+ * org.jetbrains.annotations.Nullable</a>.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+PrivateElementProcessor (/core/src/com/google/inject/internal/PrivateElementProcessor.java)/**
+ * Handles {@code Binder.newPrivateBinder()} elements.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+PrivateElementsImpl (/core/src/com/google/inject/internal/PrivateElementsImpl.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ProcessedBindingData (/core/src/com/google/inject/internal/ProcessedBindingData.java)/**
+ * Keeps track of creation listeners & uninitialized bindings, so they can be processed after
+ * bindings are recorded.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ProvidedByInternalFactory (/core/src/com/google/inject/internal/ProvidedByInternalFactory.java)/**
+ * An {@link InternalFactory} for {@literal @}{@link ProvidedBy} bindings.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ProviderInternalFactory (/core/src/com/google/inject/internal/ProviderInternalFactory.java)/**
+ * Base class for InternalFactories that are used by Providers, to handle circular dependencies.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+FastClassProviderMethod (/core/src/com/google/inject/internal/ProviderMethod.java)/**
+   * A {@link ProviderMethod} implementation that uses {@link net.sf.cglib.reflect.FastClass#invoke}
+   * to invoke the provider method.
+   */
+ReflectionProviderMethod (/core/src/com/google/inject/internal/ProviderMethod.java)/**
+   * A {@link ProviderMethod} implementation that invokes the method using normal java reflection.
+   */
+ProviderMethod (/core/src/com/google/inject/internal/ProviderMethod.java)/**
+ * A provider that invokes a method and returns its result.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ProviderMethodsModule (/core/src/com/google/inject/internal/ProviderMethodsModule.java)/**
+ * Creates bindings to methods annotated with {@literal @}{@link Provides}. Use the scope and
+ * binding annotations on the provider method to configure the binding.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ProviderToInternalFactoryAdapter (/core/src/com/google/inject/internal/ProviderToInternalFactoryAdapter.java)/** @author crazybob@google.com (Bob Lee) */
+ProvidesMethodScanner (/core/src/com/google/inject/internal/ProvidesMethodScanner.java)/**
+ * A {@link ModuleAnnotatedMethodScanner} that handles the {@Provides}, {@link ProvidesIntoSet},
+ * {@link ProvidesIntoMap} and {@link ProvidesIntoOptional} annotations.
+ *
+ * <p>This is the default scanner used by ProviderMethodsModule and handles all the built in
+ * annotations.
+ */
+KeyBinding (/core/src/com/google/inject/internal/ProvisionListenerCallbackStore.java)/** A struct that holds key & binding but uses just key for equality/hashcode. */
+ProvisionListenerCallbackStore (/core/src/com/google/inject/internal/ProvisionListenerCallbackStore.java)/**
+ * {@link ProvisionListenerStackCallback} for each key.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ProvisionListenerStackCallback (/core/src/com/google/inject/internal/ProvisionListenerStackCallback.java)/**
+ * Intercepts provisions with a stack of listeners.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+IndicesCallbackFilter (/core/src/com/google/inject/internal/ProxyFactory.java)/**
+   * A callback filter that maps methods to unique IDs. We define equals and hashCode without using
+   * any state related to the injector so that enhanced classes intercepting the same methods can be
+   * shared between injectors (and child injectors, etc).
+   */
+ProxyConstructor (/core/src/com/google/inject/internal/ProxyFactory.java)/** Constructs instances that participate in AOP. */
+ProxyFactory (/core/src/com/google/inject/internal/ProxyFactory.java)/**
+ * Builds a construction proxy that can participate in AOP. This class manages applying type and
+ * method matchers to come up with the set of intercepted methods.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+BindingSelection (/core/src/com/google/inject/internal/RealMapBinder.java)/**
+   * The BindingSelection contains some of the core state and logic for the MapBinder.
+   *
+   * <p>It lazily computes the value for keys for various permutations of Maps that are provided by
+   * this module. It also builds up maps from {@code K} to {@code Binding<V>}, which is used by all
+   * of the internal factories to actually provide the desired maps.
+   *
+   * <p>During initialization time there is only one BindingSelection. It is possible that multiple
+   * different BindingSelections are constructed. Specifically, in the case of two different modules
+   * each adding bindings to the same MapBinder. If that happens, we define the BindingSelection
+   * held by the {@link RealMapProvider} to be the authoritative one. The logic for this exists in
+   * {@link RealMultimapBinderProviderWithDependencies}. This is done to avoid confusion because the
+   * BindingSelection contains mutable state.
+   */
+PerKeyData (/core/src/com/google/inject/internal/RealMapBinder.java)/**
+       * A simple class to hold a key and the associated bindings as an array.
+       *
+       * <p>Arrays are used for performance.
+       */
+MultimapBinder (/core/src/com/google/inject/internal/RealMapBinder.java)/**
+   * Binds {@code Map<K, Set<V>>} and {{@code Map<K, Set<Provider<V>>>}.
+   *
+   * <p>This will only exist if permitDuplicates() is called.
+   */
+RealMapBinderProviderWithDependencies (/core/src/com/google/inject/internal/RealMapBinder.java)/** A base class for ProviderWithDependencies that need equality based on a specific object. */
+RealMultimapBinderProviderWithDependencies (/core/src/com/google/inject/internal/RealMapBinder.java)/**
+   * A base class for ProviderWithDependencies that need equality based on a specific object.
+   *
+   * <p>This differs from {@link RealMapBinderProviderWithDependencies} in that it gets the {@code
+   * bindingSelection} from the injector at initialization time, rather than in the constructor.
+   * This is done to allow all the providers to operate on the same instance of the {@link
+   * BindingSelection}.
+   */
+RealMapBinder (/core/src/com/google/inject/internal/RealMapBinder.java)/**
+ * The actual mapbinder plays several roles:
+ *
+ * <p>As a MapBinder, it acts as a factory for LinkedBindingBuilders for each of the map's values.
+ * It delegates to a {@link Multibinder} of entries (keys to value providers).
+ *
+ * <p>As a Module, it installs the binding to the map itself, as well as to a corresponding map
+ * whose values are providers.
+ *
+ * <p>As a module, this implements equals() and hashcode() in order to trick Guice into executing
+ * its configure() method only once. That makes it so that multiple mapbinders can be created for
+ * the same target map, but only one is bound. Since the list of bindings is retrieved from the
+ * injector itself (and not the mapbinder), each mapbinder has access to all contributions from all
+ * equivalent mapbinders.
+ *
+ * <p>Rather than binding a single Map.Entry&lt;K, V&gt;, the map binder binds keys and values
+ * independently. This allows the values to be properly scoped.
+ */
+PermitDuplicatesModule (/core/src/com/google/inject/internal/RealMultibinder.java)/**
+   * We install the permit duplicates configuration as its own binding, all by itself. This way, if
+   * only one of a multibinder's users remember to call permitDuplicates(), they're still permitted.
+   *
+   * <p>This is like setting a global variable in the injector so that each instance of the
+   * multibinder will have the same value for permitDuplicates, even if it is only set on one of
+   * them.
+   */
+RealMultibinder (/core/src/com/google/inject/internal/RealMultibinder.java)/**
+ * The actual multibinder plays several roles:
+ *
+ * <p>As a Multibinder, it acts as a factory for LinkedBindingBuilders for each of the set's
+ * elements. Each binding is given an annotation that identifies it as a part of this set.
+ *
+ * <p>As a Module, it installs the binding to the set itself. As a module, this implements equals()
+ * and hashcode() in order to trick Guice into executing its configure() method only once. That
+ * makes it so that multiple multibinders can be created for the same target collection, but only
+ * one is bound. Since the list of bindings is retrieved from the injector itself (and not the
+ * multibinder), each multibinder has access to all contributions from all multibinders.
+ *
+ * <p>As a Provider, this constructs the set instances.
+ *
+ * <p>We use a subclass to hide 'implements Module, Provider' from the public API.
+ */
+JavaOptionalProvider (/core/src/com/google/inject/internal/RealOptionalBinder.java)/** Provides the binding for java.util.Optional<T>. */
+JavaOptionalProviderProvider (/core/src/com/google/inject/internal/RealOptionalBinder.java)/** Provides the binding for java.util.Optional<Provider<T>>. */
+RealDirectTypeProvider (/core/src/com/google/inject/internal/RealOptionalBinder.java)/** Provides the binding for T, conditionally installed by calling setBinding/setDefault. */
+RealOptionalProviderProvider (/core/src/com/google/inject/internal/RealOptionalBinder.java)/** Provides the binding for Optional<Provider<T>>. */
+RealOptionalKeyProvider (/core/src/com/google/inject/internal/RealOptionalBinder.java)/** Provides the binding for Optional<T>. */
+BindingSelection (/core/src/com/google/inject/internal/RealOptionalBinder.java)/**
+   * A helper object that implements the core logic for deciding what the implementation of the
+   * binding will be.
+   *
+   * <p>This also implements the main OptionalBinderBinding logic.
+   */
+RealOptionalBinderProviderWithDependencies (/core/src/com/google/inject/internal/RealOptionalBinder.java)/** A base class for ProviderWithDependencies that need equality based on a specific object. */
+RealOptionalBinder (/core/src/com/google/inject/internal/RealOptionalBinder.java)/**
+ * The actual OptionalBinder plays several roles. It implements Module to hide that fact from the
+ * public API, and installs the various bindings that are exposed to the user.
+ */
+ScopeBindingProcessor (/core/src/com/google/inject/internal/ScopeBindingProcessor.java)/**
+ * Handles {@code Binder.bindScope} commands.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Scoping (/core/src/com/google/inject/internal/Scoping.java)/**
+ * References a scope, either directly (as a scope instance), or indirectly (as a scope annotation).
+ * The scope's eager or laziness is also exposed.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+SingleFieldInjector (/core/src/com/google/inject/internal/SingleFieldInjector.java)/** Sets an injectable field. */
+SingleMemberInjector (/core/src/com/google/inject/internal/SingleMemberInjector.java)/** Injects a field or method of a given object. */
+SingleMethodInjector (/core/src/com/google/inject/internal/SingleMethodInjector.java)/** Invokes an injectable method. */
+SingleParameterInjector (/core/src/com/google/inject/internal/SingleParameterInjector.java)/** Resolves a single parameter, to be used in a constructor or method invocation. */
+SingletonScope (/core/src/com/google/inject/internal/SingletonScope.java)/**
+ * One instance per {@link Injector}. Also see {@code @}{@link Singleton}.
+ *
+ * <p>Introduction from the author: Implementation of this class seems unreasonably complicated at
+ * the first sight. I fully agree with you, that the beast below is very complex and it's hard to
+ * reason on how does it work or not. Still I want to assure you that hundreds(?) of hours were
+ * thrown into making this code simple, while still maintaining Singleton contract.
+ *
+ * <p>Anyway, why is it so complex? Singleton scope does not seem to be that unique.
+ *
+ * <ol>
+ *   <li>Guice has never truly expected to be used in multi threading environment with many
+ *       Injectors working alongside each other. There is almost no code with Guice that propagates
+ *       state between threads. And Singleton scope is The exception.
+ *   <li>Guice supports circular dependencies and thus manages proxy objects. There is no interface
+ *       that allows user defined Scopes to create proxies, it is expected to be done by Guice.
+ *       Singleton scope needs to be able to detect circular dependencies spanning several threads,
+ *       therefore Singleton scope needs to be able to create these proxies.
+ *   <li>To make things worse, Guice has a very tricky definition for a binding resolution when
+ *       Injectors are in in a parent/child relationship. And Scope does not have access to this
+ *       information by design, the only real action that Scope can do is to call or not to call a
+ *       creator.
+ *   <li>There is no readily available code in Guice that can detect a potential deadlock, and no
+ *       code for handling dependency cycles spanning several threads. This is significantly harder
+ *       as all the dependencies in a thread at runtime can be represented with a list, where in a
+ *       multi threaded environment we have more complex dependency trees.
+ *   <li>Guice has a pretty strong contract regarding Garbage Collection, which often prevents us
+ *       from linking objects directly. So simple domain specific code can not be written and
+ *       intermediary id objects need to be managed.
+ *   <li>Guice is relatively fast and we should not make things worse. We're trying our best to
+ *       optimize synchronization for speed and memory. Happy path should be almost as fast as in a
+ *       single threaded solution and should not take much more memory.
+ *   <li>Error message generation in Guice was not meant to be used like this and to work around its
+ *       APIs we need a lot of code. Additional complexity comes from inherent data races as message
+ *       is only generated when failure occurs on proxy object generation. Things get ugly pretty
+ *       fast.
+ * </ol>
+ *
+ * @see #scope(Key, Provider)
+ * @see CycleDetectingLock
+ * @author timofeyb (Timothy Basanov)
+ */
+State (/core/src/com/google/inject/internal/State.java)/**
+ * The inheritable data within an injector. This class is intended to allow parent and local
+ * injector data to be accessed as a unit.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+TypeConverterBindingProcessor (/core/src/com/google/inject/internal/TypeConverterBindingProcessor.java)/**
+ * Handles {@code Binder.convertToTypes} commands.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+UniqueAnnotations (/core/src/com/google/inject/internal/UniqueAnnotations.java)/** @author jessewilson@google.com (Jesse Wilson) */
+UntargettedBindingProcessor (/core/src/com/google/inject/internal/UntargettedBindingProcessor.java)/**
+ * Processes just UntargettedBindings.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+Classes (/core/src/com/google/inject/internal/util/Classes.java)/** Class utilities. */
+LineNumbers (/core/src/com/google/inject/internal/util/LineNumbers.java)/**
+ * Looks up line numbers for classes and their members.
+ *
+ * @author Chris Nokleberg
+ */
+SourceProvider (/core/src/com/google/inject/internal/util/SourceProvider.java)/**
+ * Provides access to the calling line of code.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+InMemoryStackTraceElement (/core/src/com/google/inject/internal/util/StackTraceElements.java)/** In-Memory version of {@link StackTraceElement} that does not store the file name. */
+StackTraceElements (/core/src/com/google/inject/internal/util/StackTraceElements.java)/**
+ * Creates stack trace elements for members.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Stopwatch (/core/src/com/google/inject/internal/util/Stopwatch.java)/**
+ * Enables simple performance monitoring.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+WeakKeySet (/core/src/com/google/inject/internal/WeakKeySet.java)/**
+ * Minimal set that doesn't hold strong references to the contained keys.
+ *
+ * @author dweis@google.com (Daniel Weis)
+ */
+Key (/core/src/com/google/inject/Key.java)/**
+ * Binding key consisting of an injection type and an optional annotation. Matches the type and
+ * annotation at a point of injection.
+ *
+ * <p>For example, {@code Key.get(Service.class, Transactional.class)} will match:
+ *
+ * <pre>
+ *   {@literal @}Inject
+ *   public void setService({@literal @}Transactional Service service) {
+ *     ...
+ *   }
+ * </pre>
+ *
+ * <p>{@code Key} supports generic types via subclassing just like {@link TypeLiteral}.
+ *
+ * <p>Keys do not differentiate between primitive types (int, char, etc.) and their corresponding
+ * wrapper types (Integer, Character, etc.). Primitive types will be replaced with their wrapper
+ * types when keys are created.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+AbstractMatcher (/core/src/com/google/inject/matcher/AbstractMatcher.java)/**
+ * Implements {@code and()} and {@code or()}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Matcher (/core/src/com/google/inject/matcher/Matcher.java)/**
+ * Returns {@code true} or {@code false} for a given input.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Matchers (/core/src/com/google/inject/matcher/Matchers.java)/**
+ * Matcher implementations. Supports matching classes and methods.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+MembersInjector (/core/src/com/google/inject/MembersInjector.java)/**
+ * Injects dependencies into the fields and methods on instances of type {@code T}. Ignores the
+ * presence or absence of an injectable constructor.
+ *
+ * @param <T> type to inject members of
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+Module (/core/src/com/google/inject/Module.java)/**
+ * A module contributes configuration information, typically interface bindings, which will be used
+ * to create an {@link Injector}. A Guice-based application is ultimately composed of little more
+ * than a set of {@code Module}s and some bootstrapping code.
+ *
+ * <p>Your Module classes can use a more streamlined syntax by extending {@link AbstractModule}
+ * rather than implementing this interface directly.
+ *
+ * <p>In addition to the bindings configured via {@link #configure}, bindings will be created for
+ * all methods annotated with {@literal @}{@link Provides}. Use scope and binding annotations on
+ * these methods to configure the bindings.
+ */
+MapBinder (/core/src/com/google/inject/multibindings/MapBinder.java)/**
+ * An API to bind multiple map entries separately, only to later inject them as a complete map.
+ * MapBinder is intended for use in your application's module:
+ *
+ * <pre><code>
+ * public class SnacksModule extends AbstractModule {
+ *   protected void configure() {
+ *     MapBinder&lt;String, Snack&gt; mapbinder
+ *         = MapBinder.newMapBinder(binder(), String.class, Snack.class);
+ *     mapbinder.addBinding("twix").toInstance(new Twix());
+ *     mapbinder.addBinding("snickers").toProvider(SnickersProvider.class);
+ *     mapbinder.addBinding("skittles").to(Skittles.class);
+ *   }
+ * }</code></pre>
+ *
+ * <p>With this binding, a {@link Map}{@code <String, Snack>} can now be injected:
+ *
+ * <pre><code>
+ * class SnackMachine {
+ *   {@literal @}Inject
+ *   public SnackMachine(Map&lt;String, Snack&gt; snacks) { ... }
+ * }</code></pre>
+ *
+ * <p>In addition to binding {@code Map<K, V>}, a mapbinder will also bind {@code Map<K,
+ * Provider<V>>} for lazy value provision:
+ *
+ * <pre><code>
+ * class SnackMachine {
+ *   {@literal @}Inject
+ *   public SnackMachine(Map&lt;String, Provider&lt;Snack&gt;&gt; snackProviders) { ... }
+ * }</code></pre>
+ *
+ * <p>Contributing mapbindings from different modules is supported. For example, it is okay to have
+ * both {@code CandyModule} and {@code ChipsModule} both create their own {@code MapBinder<String,
+ * Snack>}, and to each contribute bindings to the snacks map. When that map is injected, it will
+ * contain entries from both modules.
+ *
+ * <p>The map's iteration order is consistent with the binding order. This is convenient when
+ * multiple elements are contributed by the same module because that module can order its bindings
+ * appropriately. Avoid relying on the iteration order of elements contributed by different modules,
+ * since there is no equivalent mechanism to order modules.
+ *
+ * <p>The map is unmodifiable. Elements can only be added to the map by configuring the MapBinder.
+ * Elements can never be removed from the map.
+ *
+ * <p>Values are resolved at map injection time. If a value is bound to a provider, that provider's
+ * get method will be called each time the map is injected (unless the binding is also scoped, or a
+ * map of providers is injected).
+ *
+ * <p>Annotations are used to create different maps of the same key/value type. Each distinct
+ * annotation gets its own independent map.
+ *
+ * <p><strong>Keys must be distinct.</strong> If the same key is bound more than once, map injection
+ * will fail. However, use {@link #permitDuplicates()} in order to allow duplicate keys; extra
+ * bindings to {@code Map<K, Set<V>>} and {@code Map<K, Set<Provider<V>>} will be added.
+ *
+ * <p><strong>Keys must be non-null.</strong> {@code addBinding(null)} will throw an unchecked
+ * exception.
+ *
+ * <p><strong>Values must be non-null to use map injection.</strong> If any value is null, map
+ * injection will fail (although injecting a map of providers will not).
+ *
+ * @author dpb@google.com (David P. Baker)
+ */
+MapBinderBinding (/core/src/com/google/inject/multibindings/MapBinderBinding.java)/**
+ * A binding for a MapBinder.
+ *
+ * <p>Although MapBinders may be injected through a variety of generic types ({@code Map<K, V>},
+ * {@code Map<K, Provider<V>>}, {@code Map<K, Set<V>>}, {@ocde Map<K, Set<Provider<V>>}, and even
+ * {@code Set<Map.Entry<K, Provider<V>>}), a MapBinderBinding exists only on the Binding associated
+ * with the Map&lt;K, V> key. Injectable map types can be discovered using {@link #getMapKey} (which
+ * will return the {@code Map<K, V>} key), or{@link #getAlternateMapKeys} (which will return the
+ * other keys that can inject this data). Other bindings can be validated to be derived from this
+ * MapBinderBinding using {@link #containsElement(Element)}.
+ *
+ * @param <T> The fully qualified type of the map, including Map. For example: {@code
+ *     MapBinderBinding<Map<String, Snack>>}
+ * @since 3.0
+ * @author sameb@google.com (Sam Berlin)
+ */
+Multibinder (/core/src/com/google/inject/multibindings/Multibinder.java)/**
+ * An API to bind multiple values separately, only to later inject them as a complete collection.
+ * Multibinder is intended for use in your application's module:
+ *
+ * <pre><code>
+ * public class SnacksModule extends AbstractModule {
+ *   protected void configure() {
+ *     Multibinder&lt;Snack&gt; multibinder
+ *         = Multibinder.newSetBinder(binder(), Snack.class);
+ *     multibinder.addBinding().toInstance(new Twix());
+ *     multibinder.addBinding().toProvider(SnickersProvider.class);
+ *     multibinder.addBinding().to(Skittles.class);
+ *   }
+ * }</code></pre>
+ *
+ * <p>With this binding, a {@link Set}{@code <Snack>} can now be injected:
+ *
+ * <pre><code>
+ * class SnackMachine {
+ *   {@literal @}Inject
+ *   public SnackMachine(Set&lt;Snack&gt; snacks) { ... }
+ * }</code></pre>
+ *
+ * If desired, {@link Collection}{@code <Provider<Snack>>} can also be injected.
+ *
+ * <p>Contributing multibindings from different modules is supported. For example, it is okay for
+ * both {@code CandyModule} and {@code ChipsModule} to create their own {@code Multibinder<Snack>},
+ * and to each contribute bindings to the set of snacks. When that set is injected, it will contain
+ * elements from both modules.
+ *
+ * <p>The set's iteration order is consistent with the binding order. This is convenient when
+ * multiple elements are contributed by the same module because that module can order its bindings
+ * appropriately. Avoid relying on the iteration order of elements contributed by different modules,
+ * since there is no equivalent mechanism to order modules.
+ *
+ * <p>The set is unmodifiable. Elements can only be added to the set by configuring the multibinder.
+ * Elements can never be removed from the set.
+ *
+ * <p>Elements are resolved at set injection time. If an element is bound to a provider, that
+ * provider's get method will be called each time the set is injected (unless the binding is also
+ * scoped).
+ *
+ * <p>Annotations are be used to create different sets of the same element type. Each distinct
+ * annotation gets its own independent collection of elements.
+ *
+ * <p><strong>Elements must be distinct.</strong> If multiple bound elements have the same value,
+ * set injection will fail.
+ *
+ * <p><strong>Elements must be non-null.</strong> If any set element is null, set injection will
+ * fail.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+MultibinderBinding (/core/src/com/google/inject/multibindings/MultibinderBinding.java)/**
+ * A binding for a Multibinder.
+ *
+ * <p>Although Multibinders may be injected through a variety of generic types ({@code Set<V>} and
+ * {@code Collection<Provider<V>>}), a MultibinderBinding exists only on the Binding associated with
+ * the {@code Set<V>} key. Injectable types can be discovered using {@link #getSetKey} (which will
+ * return the {@code Set<V>} key), or{@link #getAlternateSetKeys} (which will return the other keys
+ * that can inject this data). Other bindings can be validated to be derived from this
+ * MultibinderBinding using {@link #containsElement(Element)}.
+ *
+ * @param <T> The fully qualified type of the set, including Set. For example: {@code
+ *     MultibinderBinding<Set<Boolean>>}
+ * @since 3.0
+ * @author sameb@google.com (Sam Berlin)
+ */
+MultibindingsScanner (/core/src/com/google/inject/multibindings/MultibindingsScanner.java)/**
+ * Scans a module for annotations that signal multibindings, mapbindings, and optional bindings.
+ *
+ * @since 4.0
+ * @deprecated This functionality is installed by default. All references to this can be safely
+ *     removed. This class will be removed in Guice 4.4
+ */
+MultibindingsTargetVisitor (/core/src/com/google/inject/multibindings/MultibindingsTargetVisitor.java)/**
+ * A visitor for the multibinder extension.
+ *
+ * <p>If your {@link BindingTargetVisitor} implements this interface, bindings created by using
+ * {@link Multibinder}, {@link MapBinder} or {@link OptionalBinderBinding} will be visited through
+ * this interface.
+ *
+ * @since 3.0
+ * @author sameb@google.com (Sam Berlin)
+ */
+OptionalBinder (/core/src/com/google/inject/multibindings/OptionalBinder.java)/**
+ * An API to bind optional values, optionally with a default value. OptionalBinder fulfills two
+ * roles:
+ *
+ * <ol>
+ *   <li>It allows a framework to define an injection point that may or may not be bound by users.
+ *   <li>It allows a framework to supply a default value that can be changed by users.
+ * </ol>
+ *
+ * <p>When an OptionalBinder is added, it will always supply the bindings: {@code Optional<T>} and
+ * {@code Optional<Provider<T>>}. Both {@link java.util.Optional java.util.Optional} and {@link
+ * com.google.common.base.Optional com.google.common.base.Optional} are bound for compatibility. If
+ * {@link #setBinding} or {@link #setDefault} are called, it will also bind {@code T}.
+ *
+ * <p>{@code setDefault} is intended for use by frameworks that need a default value. User code can
+ * call {@code setBinding} to override the default. <b>Warning: Even if setBinding is called, the
+ * default binding will still exist in the object graph. If it is a singleton, it will be
+ * instantiated in {@code Stage.PRODUCTION}.</b>
+ *
+ * <p>If setDefault or setBinding are linked to Providers, the Provider may return {@code null}. If
+ * it does, {@code Optional<T>} will be bound to an absent Optional. Binding setBinding to a
+ * Provider that returns null will not cause OptionalBinder to fall back to the setDefault binding.
+ *
+ * <p>If neither setDefault nor setBinding are called, it will try to link to a user-supplied
+ * binding of the same type. If no binding exists, the optionals will be absent. Otherwise, if a
+ * user-supplied binding of that type exists, or if setBinding or setDefault are called, the
+ * optionals will return present if they are bound to a non-null value.
+ *
+ * <p>Values are resolved at injection time. If a value is bound to a provider, that provider's get
+ * method will be called each time the optional is injected (unless the binding is also scoped, or
+ * an optional of provider is injected).
+ *
+ * <p>Annotations are used to create different optionals of the same key/value type. Each distinct
+ * annotation gets its own independent binding.
+ *
+ * <pre><code>
+ * public class FrameworkModule extends AbstractModule {
+ *   protected void configure() {
+ *     OptionalBinder.newOptionalBinder(binder(), Renamer.class);
+ *   }
+ * }</code></pre>
+ *
+ * <p>With this module, an {@code Optional<Renamer>} can now be injected. With no other bindings,
+ * the optional will be absent. Users can specify bindings in one of two ways:
+ *
+ * <p>Option 1:
+ *
+ * <pre><code>
+ * public class UserRenamerModule extends AbstractModule {
+ *   protected void configure() {
+ *     bind(Renamer.class).to(ReplacingRenamer.class);
+ *   }
+ * }</code></pre>
+ *
+ * <p>or Option 2:
+ *
+ * <pre><code>
+ * public class UserRenamerModule extends AbstractModule {
+ *   protected void configure() {
+ *     OptionalBinder.newOptionalBinder(binder(), Renamer.class)
+ *         .setBinding().to(ReplacingRenamer.class);
+ *   }
+ * }</code></pre>
+ *
+ * With both options, the {@code Optional<Renamer>} will be present and supply the ReplacingRenamer.
+ *
+ * <p>Default values can be supplied using:
+ *
+ * <pre><code>
+ * public class FrameworkModule extends AbstractModule {
+ *   protected void configure() {
+ *     OptionalBinder.newOptionalBinder(binder(), Key.get(String.class, LookupUrl.class))
+ *         .setDefault().toInstance(DEFAULT_LOOKUP_URL);
+ *   }
+ * }</code></pre>
+ *
+ * With the above module, code can inject an {@code @LookupUrl String} and it will supply the
+ * DEFAULT_LOOKUP_URL. A user can change this value by binding
+ *
+ * <pre><code>
+ * public class UserLookupModule extends AbstractModule {
+ *   protected void configure() {
+ *     OptionalBinder.newOptionalBinder(binder(), Key.get(String.class, LookupUrl.class))
+ *         .setBinding().toInstance(CUSTOM_LOOKUP_URL);
+ *   }
+ * }</code></pre>
+ *
+ * ... which will override the default value.
+ *
+ * <p>If one module uses setDefault the only way to override the default is to use setBinding. It is
+ * an error for a user to specify the binding without using OptionalBinder if setDefault or
+ * setBinding are called. For example,
+ *
+ * <pre><code>
+ * public class FrameworkModule extends AbstractModule {
+ *   protected void configure() {
+ *     OptionalBinder.newOptionalBinder(binder(), Key.get(String.class, LookupUrl.class))
+ *         .setDefault().toInstance(DEFAULT_LOOKUP_URL);
+ *   }
+ * }
+ * public class UserLookupModule extends AbstractModule {
+ *   protected void configure() {
+ *     bind(Key.get(String.class, LookupUrl.class)).toInstance(CUSTOM_LOOKUP_URL);
+ *   }
+ * }</code></pre>
+ *
+ * ... would generate an error, because both the framework and the user are trying to bind
+ * {@code @LookupUrl String}.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 4.0
+ */
+OptionalBinderBinding (/core/src/com/google/inject/multibindings/OptionalBinderBinding.java)/**
+ * A binding for a OptionalBinder.
+ *
+ * <p>Although OptionalBinders may be injected through a variety of types {@code V}, {@code
+ * Optional<V>}, {@code Optional<Provider<V>>}, etc..), an OptionalBinderBinding exists only on the
+ * Binding associated with the {@code Optional<V>} key. Injectable types can be discovered using
+ * {@link #getKey} (which will return the {@code Optional<V>} key), or{@link #getAlternateKeys}
+ * (which will return the other keys that can inject this data). Other bindings can be validated to
+ * be derived from this OptionalBinderBinding using {@link #containsElement}.
+ *
+ * @param <T> The fully qualified type of the optional binding, including Optional. For example:
+ *     {@code Optional<String>}.
+ * @since 4.0
+ * @author sameb@google.com (Sam Berlin)
+ */
+Names (/core/src/com/google/inject/name/Names.java)/**
+ * Utility methods for use with {@code @}{@link Named}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+OutOfScopeException (/core/src/com/google/inject/OutOfScopeException.java)/**
+ * Thrown from {@link Provider#get} when an attempt is made to access a scoped object while the
+ * scope in question is not currently active.
+ *
+ * @author kevinb@google.com (Kevin Bourrillion)
+ * @since 2.0
+ */
+PrivateBinder (/core/src/com/google/inject/PrivateBinder.java)/**
+ * Returns a binder whose configuration information is hidden from its environment by default. See
+ * {@link com.google.inject.PrivateModule PrivateModule} for details.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+PrivateModule (/core/src/com/google/inject/PrivateModule.java)/**
+ * A module whose configuration information is hidden from its environment by default. Only bindings
+ * that are explicitly exposed will be available to other modules and to the users of the injector.
+ * This module may expose the bindings it creates and the bindings of the modules it installs.
+ *
+ * <p>A private module can be nested within a regular module or within another private module using
+ * {@link Binder#install install()}. Its bindings live in a new environment that inherits bindings,
+ * type converters, scopes, and interceptors from the surrounding ("parent") environment. When you
+ * nest multiple private modules, the result is a tree of environments where the injector's
+ * environment is the root.
+ *
+ * <p>Guice EDSL bindings can be exposed with {@link #expose(Class) expose()}. {@literal @}{@link
+ * com.google.inject.Provides Provides} bindings can be exposed with the {@literal @}{@link Exposed}
+ * annotation:
+ *
+ * <pre>
+ * public class FooBarBazModule extends PrivateModule {
+ *   protected void configure() {
+ *     bind(Foo.class).to(RealFoo.class);
+ *     expose(Foo.class);
+ *
+ *     install(new TransactionalBarModule());
+ *     expose(Bar.class).annotatedWith(Transactional.class);
+ *
+ *     bind(SomeImplementationDetail.class);
+ *     install(new MoreImplementationDetailsModule());
+ *   }
+ *
+ *   {@literal @}Provides {@literal @}Exposed
+ *   public Baz provideBaz() {
+ *     return new SuperBaz();
+ *   }
+ * }
+ * </pre>
+ *
+ * <p>Private modules are implemented using {@link Injector#createChildInjector(Module[]) parent
+ * injectors}. When it can satisfy their dependencies, just-in-time bindings will be created in the
+ * root environment. Such bindings are shared among all environments in the tree.
+ *
+ * <p>The scope of a binding is constrained to its environment. A singleton bound in a private
+ * module will be unique to its environment. But a binding for the same type in a different private
+ * module will yield a different instance.
+ *
+ * <p>A shared binding that injects the {@code Injector} gets the root injector, which only has
+ * access to bindings in the root environment. An explicit binding that injects the {@code Injector}
+ * gets access to all bindings in the child environment.
+ *
+ * <p>To promote a just-in-time binding to an explicit binding, bind it:
+ *
+ * <pre>
+ *   bind(FooImpl.class);
+ * </pre>
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+Provider (/core/src/com/google/inject/Provider.java)/**
+ * An object capable of providing instances of type {@code T}. Providers are used in numerous ways
+ * by Guice:
+ *
+ * <ul>
+ * <li>When the default means for obtaining instances (an injectable or parameterless constructor)
+ *     is insufficient for a particular binding, the module can specify a custom {@code Provider}
+ *     instead, to control exactly how Guice creates or obtains instances for the binding.
+ * <li>An implementation class may always choose to have a {@code Provider<T>} instance injected,
+ *     rather than having a {@code T} injected directly. This may give you access to multiple
+ *     instances, instances you wish to safely mutate and discard, instances which are out of scope
+ *     (e.g. using a {@code @RequestScoped} object from within a {@code @SessionScoped} object), or
+ *     instances that will be initialized lazily.
+ * <li>A custom {@link Scope} is implemented as a decorator of {@code Provider<T>}, which decides
+ *     when to delegate to the backing provider and when to provide the instance some other way.
+ * <li>The {@link Injector} offers access to the {@code Provider<T>} it uses to fulfill requests for
+ *     a given key, via the {@link Injector#getProvider} methods.
+ * </ul>
+ *
+ * @param <T> the type of object this provides
+ * @author crazybob@google.com (Bob Lee)
+ */
+ProvisionException (/core/src/com/google/inject/ProvisionException.java)/**
+ * Indicates that there was a runtime failure while providing an instance.
+ *
+ *
+ * @author kevinb@google.com (Kevin Bourrillion)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+Scope (/core/src/com/google/inject/Scope.java)/**
+ * A scope is a level of visibility that instances provided by Guice may have. By default, an
+ * instance created by the {@link Injector} has <i>no scope</i>, meaning it has no state from the
+ * framework's perspective -- the {@code Injector} creates it, injects it once into the class that
+ * required it, and then immediately forgets it. Associating a scope with a particular binding
+ * allows the created instance to be "remembered" and possibly used again for other injections.
+ *
+ * <p>An example of a scope is {@link Scopes#SINGLETON}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Scopes (/core/src/com/google/inject/Scopes.java)/**
+ * Built-in scope implementations.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+BindingScopingVisitor (/core/src/com/google/inject/spi/BindingScopingVisitor.java)/**
+ * Visits each of the strategies used to scope an injection.
+ *
+ * @param <V> any type to be returned by the visit method. Use {@link Void} with {@code return null}
+ *     if no return type is needed.
+ * @since 2.0
+ */
+BindingTargetVisitor (/core/src/com/google/inject/spi/BindingTargetVisitor.java)/**
+ * Visits each of the strategies used to find an instance to satisfy an injection.
+ *
+ * @param <V> any type to be returned by the visit method. Use {@link Void} with {@code return null}
+ *     if no return type is needed.
+ * @since 2.0
+ */
+ConstructorBinding (/core/src/com/google/inject/spi/ConstructorBinding.java)/**
+ * A binding to the constructor of a concrete clss. To resolve injections, an instance is
+ * instantiated by invoking the constructor.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+ConvertedConstantBinding (/core/src/com/google/inject/spi/ConvertedConstantBinding.java)/**
+ * A binding created from converting a bound instance to a new type. The source binding has the same
+ * binding annotation but a different type.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+DefaultBindingScopingVisitor (/core/src/com/google/inject/spi/DefaultBindingScopingVisitor.java)/**
+ * No-op visitor for subclassing. All interface methods simply delegate to {@link #visitOther()},
+ * returning its result.
+ *
+ * @param <V> any type to be returned by the visit method. Use {@link Void} with {@code return null}
+ *     if no return type is needed.
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+DefaultBindingTargetVisitor (/core/src/com/google/inject/spi/DefaultBindingTargetVisitor.java)/**
+ * No-op visitor for subclassing. All interface methods simply delegate to {@link
+ * #visitOther(Binding)}, returning its result.
+ *
+ * @param <V> any type to be returned by the visit method. Use {@link Void} with {@code return null}
+ *     if no return type is needed.
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+DefaultElementVisitor (/core/src/com/google/inject/spi/DefaultElementVisitor.java)/**
+ * No-op visitor for subclassing. All interface methods simply delegate to {@link
+ * #visitOther(Element)}, returning its result.
+ *
+ * @param <V> any type to be returned by the visit method. Use {@link Void} with {@code return null}
+ *     if no return type is needed.
+ * @author sberlin@gmail.com (Sam Berlin)
+ * @since 2.0
+ */
+Dependency (/core/src/com/google/inject/spi/Dependency.java)/**
+ * A variable that can be resolved by an injector.
+ *
+ * <p>Use {@link #get} to build a freestanding dependency, or {@link InjectionPoint} to build one
+ * that's attached to a constructor, method or field.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+DependencyAndSource (/core/src/com/google/inject/spi/DependencyAndSource.java)/**
+ * A combination of a {@link Dependency} and the {@link Binding#getSource() source} where the
+ * dependency was bound.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 4.0
+ * @deprecated The only use of this object is for {@link
+ *     ProvisionListener.ProvisionInvocation#getDependencyChain()} which is also deprecated. This
+ *     object will also be removed in Guice 4.4.
+ */
+DisableCircularProxiesOption (/core/src/com/google/inject/spi/DisableCircularProxiesOption.java)/**
+ * A request to disable circular proxies.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 3.0
+ */
+Element (/core/src/com/google/inject/spi/Element.java)/**
+ * A core component of a module or injector.
+ *
+ * <p>The elements of a module can be inspected, validated and rewritten. Use {@link
+ * Elements#getElements(com.google.inject.Module[]) Elements.getElements()} to read the elements
+ * from a module, and {@link Elements#getModule(Iterable) Elements.getModule()} to rewrite them.
+ * This can be used for static analysis and generation of Guice modules.
+ *
+ * <p>The elements of an injector can be inspected and exercised. Use {@link
+ * com.google.inject.Injector#getBindings Injector.getBindings()} to reflect on Guice injectors.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @author crazybob@google.com (Bob Lee)
+ * @since 2.0
+ */
+Elements (/core/src/com/google/inject/spi/Elements.java)/**
+ * Exposes elements of a module so they can be inspected, validated or {@link
+ * Element#applyTo(Binder) rewritten}.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+ElementSource (/core/src/com/google/inject/spi/ElementSource.java)/**
+ * Contains information about where and how an {@link Element element} was bound.
+ *
+ * <p>The {@link #getDeclaringSource() declaring source} refers to a location in source code that
+ * defines the Guice {@link Element element}. For example, if the element is created from a method
+ * annotated by {@literal @Provides}, the declaring source of element would be the method itself.
+ *
+ * <p>The {@link #getStackTrace()} refers to the sequence of calls ends at one of {@link
+ * com.google.inject.Binder} {@code bindXXX()} methods and eventually defines the element. Note that
+ * {@link #getStackTrace()} lists {@link StackTraceElement StackTraceElements} in reverse
+ * chronological order. The first element (index zero) is the last method call and the last element
+ * is the first method invocation. By default, the stack trace is not collected. The default
+ * behavior can be changed by setting the {@code guice_include_stack_traces} flag value. The value
+ * can be either {@code OFF}, {@code ONLY_FOR_DECLARING_SOURCE} or {@code COMPLETE}. Note that
+ * collecting stack traces for every binding can cause a performance hit when the injector is
+ * created.
+ *
+ * <p>The sequence of class names of {@link com.google.inject.Module modules} involved in the
+ * element creation can be retrieved by {@link #getModuleClassNames()}. Similar to {@link
+ * #getStackTrace()}, the order is reverse chronological. The first module (index 0) is the module
+ * that installs the {@link Element element}. The last module is the root module.
+ *
+ * <p>In order to support the cases where a Guice {@link Element element} is created from another
+ * Guice {@link Element element} (original) (e.g., by {@link Element#applyTo}), it also provides a
+ * reference to the original element source ({@link #getOriginalElementSource()}).
+ *
+ * @since 4.0
+ */
+ElementVisitor (/core/src/com/google/inject/spi/ElementVisitor.java)/**
+ * Visit elements.
+ *
+ * @param <V> any type to be returned by the visit method. Use {@link Void} with {@code return null}
+ *     if no return type is needed.
+ * @since 2.0
+ */
+ExposedBinding (/core/src/com/google/inject/spi/ExposedBinding.java)/**
+ * A binding to a key exposed from an enclosed private environment.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+HasDependencies (/core/src/com/google/inject/spi/HasDependencies.java)/**
+ * Implemented by {@link com.google.inject.Binding bindings}, {@link com.google.inject.Provider
+ * providers} and instances that expose their dependencies explicitly.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+InjectionListener (/core/src/com/google/inject/spi/InjectionListener.java)/**
+ * Listens for injections into instances of type {@code I}. Useful for performing further
+ * injections, post-injection initialization, and more.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+InjectableMember (/core/src/com/google/inject/spi/InjectionPoint.java)/** Node in the doubly-linked list of injectable members (fields and methods). */
+InjectableMembers (/core/src/com/google/inject/spi/InjectionPoint.java)/** Linked list of injectable members. */
+OverrideIndex (/core/src/com/google/inject/spi/InjectionPoint.java)/**
+   * Keeps track of injectable methods so we can remove methods that get overridden in O(1) time.
+   * Uses our position in the type hierarchy to perform optimizations.
+   */
+Signature (/core/src/com/google/inject/spi/InjectionPoint.java)/** A method signature. Used to handle method overridding. */
+InjectionPoint (/core/src/com/google/inject/spi/InjectionPoint.java)/**
+ * A constructor, field or method that can receive injections. Typically this is a member with the
+ * {@literal @}{@link Inject} annotation. For non-private, no argument constructors, the member may
+ * omit the annotation.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @since 2.0
+ */
+InjectionRequest (/core/src/com/google/inject/spi/InjectionRequest.java)/**
+ * A request to inject the instance fields and methods of an instance. Requests are created
+ * explicitly in a module using {@link com.google.inject.Binder#requestInjection(Object)
+ * requestInjection()} statements:
+ *
+ * <pre>
+ *     requestInjection(serviceInstance);</pre>
+ *
+ * @author mikeward@google.com (Mike Ward)
+ * @since 2.0
+ */
+InstanceBinding (/core/src/com/google/inject/spi/InstanceBinding.java)/**
+ * A binding to a single instance. The same instance is returned for every injection.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+InterceptorBinding (/core/src/com/google/inject/spi/InterceptorBinding.java)/**
+ * Registration of interceptors for matching methods of matching classes. Instances are created
+ * explicitly in a module using {@link com.google.inject.Binder#bindInterceptor( Matcher, Matcher,
+ * MethodInterceptor[]) bindInterceptor()} statements:
+ *
+ * <pre>
+ *     bindInterceptor(Matchers.subclassesOf(MyAction.class),
+ *         Matchers.annotatedWith(Transactional.class),
+ *         new MyTransactionInterceptor());</pre>
+ *
+ * or from an injectable type listener using {@link TypeEncounter#bindInterceptor(Matcher,
+ * org.aopalliance.intercept.MethodInterceptor[]) TypeEncounter.bindInterceptor()}.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+LinkedKeyBinding (/core/src/com/google/inject/spi/LinkedKeyBinding.java)/**
+ * A binding to a linked key. The other key's binding is used to resolve injections.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+MembersInjectorLookup (/core/src/com/google/inject/spi/MembersInjectorLookup.java)/**
+ * A lookup of the members injector for a type. Lookups are created explicitly in a module using
+ * {@link com.google.inject.Binder#getMembersInjector(Class) getMembersInjector()} statements:
+ *
+ * <pre>
+ *     MembersInjector&lt;PaymentService&gt; membersInjector
+ *         = getMembersInjector(PaymentService.class);</pre>
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @since 2.0
+ */
+Message (/core/src/com/google/inject/spi/Message.java)/**
+ * An error message and the context in which it occured. Messages are usually created internally by
+ * Guice and its extensions. Messages can be created explicitly in a module using {@link
+ * com.google.inject.Binder#addError(Throwable) addError()} statements:
+ *
+ * <pre>
+ *     try {
+ *       bindPropertiesFromFile();
+ *     } catch (IOException e) {
+ *       addError(e);
+ *     }</pre>
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+ModuleAnnotatedMethodScanner (/core/src/com/google/inject/spi/ModuleAnnotatedMethodScanner.java)/**
+ * Allows extensions to scan modules for annotated methods and bind those methods as providers,
+ * similar to {@code @Provides} methods.
+ *
+ * @since 4.0
+ */
+ModuleAnnotatedMethodScannerBinding (/core/src/com/google/inject/spi/ModuleAnnotatedMethodScannerBinding.java)/**
+ * Represents a call to {@link Binder#scanModulesForAnnotatedMethods} in a module.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 4.0
+ */
+ModuleSource (/core/src/com/google/inject/spi/ModuleSource.java)/**
+ * Associated to a {@link Module module}, provides the module class name, the parent module {@link
+ * ModuleSource source}, and the call stack that ends just before the module {@link
+ * Module#configure(Binder) configure(Binder)} method invocation.
+ */
+PrivateElements (/core/src/com/google/inject/spi/PrivateElements.java)/**
+ * A private collection of elements that are hidden from the enclosing injector or module by
+ * default. See {@link com.google.inject.PrivateModule PrivateModule} for details.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+ProviderBinding (/core/src/com/google/inject/spi/ProviderBinding.java)/**
+ * A binding to a {@link Provider} that delegates to the binding for the provided type. This binding
+ * is used whenever a {@code Provider<T>} is injected (as opposed to injecting {@code T} directly).
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+ProviderInstanceBinding (/core/src/com/google/inject/spi/ProviderInstanceBinding.java)/**
+ * A binding to a provider instance. The provider's {@code get} method is invoked to resolve
+ * injections.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+ProviderKeyBinding (/core/src/com/google/inject/spi/ProviderKeyBinding.java)/**
+ * A binding to a provider key. To resolve injections, the provider key is first resolved, then that
+ * provider's {@code get} method is invoked.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+ProviderLookup (/core/src/com/google/inject/spi/ProviderLookup.java)/**
+ * A lookup of the provider for a type. Lookups are created explicitly in a module using {@link
+ * com.google.inject.Binder#getProvider(Class) getProvider()} statements:
+ *
+ * <pre>
+ *     Provider&lt;PaymentService&gt; paymentServiceProvider
+ *         = getProvider(PaymentService.class);</pre>
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+ProviderWithDependencies (/core/src/com/google/inject/spi/ProviderWithDependencies.java)/**
+ * A provider with dependencies on other injected types. If a {@link Provider} has dependencies that
+ * aren't specified in injections, this interface should be used to expose all dependencies.
+ *
+ * @since 2.0
+ */
+ProviderWithExtensionVisitor (/core/src/com/google/inject/spi/ProviderWithExtensionVisitor.java)/**
+ * A Provider that is part of an extension which supports a custom BindingTargetVisitor.
+ *
+ * <p>When an extension binds a provider instance, the provider can implement this interface to
+ * allow users using the {@link Binding#acceptTargetVisitor(BindingTargetVisitor)} method to visit a
+ * custom visitor designed for that extension. A typical implementation within the extension would
+ * look like
+ *
+ * <pre>
+ * &lt;V, B> V acceptExtensionVisitor(BindingTargetVisitor&lt;B, V> visitor, ProviderInstanceBinding&lt;? extends B> binding) {
+ *   if(visitor instanceof MyCustomExtensionVisitor) {
+ *     return ((MyCustomExtensionVisitor&lt;B, V>)visitor).visitCustomExtension(customProperties, binding);
+ *   } else {
+ *     return visitor.visit(binding);
+ *   }
+ * }</pre>
+ *
+ * 'MyCustomExtensionVisitor' in the example above would be an interface the extension provides that
+ * users can implement in order to be notified of custom extension information. These visitor
+ * interfaces must extend from BindingTargetVisitor.
+ *
+ * @since 3.0
+ * @author sameb@google.com (Sam Berlin)
+ */
+ProvidesMethodBinding (/core/src/com/google/inject/spi/ProvidesMethodBinding.java)/**
+ * An {@literal @}{@link Provides} binding or binding produced by a {@link
+ * ModuleAnnotatedMethodScanner}.
+ *
+ * @since 4.0
+ * @author sameb@google.com (Sam Berlin)
+ */
+ProvidesMethodTargetVisitor (/core/src/com/google/inject/spi/ProvidesMethodTargetVisitor.java)/**
+ * A visitor for the {@literal @}{@link Provides} bindings.
+ *
+ * <p>If your {@link com.google.inject.spi.BindingTargetVisitor} implements this interface, bindings
+ * created by using {@code @Provides} will be visited through this interface.
+ *
+ * @since 4.0
+ * @author sameb@google.com (Sam Berlin)
+ */
+ProvisionInvocation (/core/src/com/google/inject/spi/ProvisionListener.java)/**
+   * Encapsulates a single act of provisioning.
+   *
+   * @since 4.0
+   */
+ProvisionListener (/core/src/com/google/inject/spi/ProvisionListener.java)/**
+ * Listens for provisioning of objects. Useful for gathering timing information about provisioning,
+ * post-provision initialization, and more.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 4.0
+ */
+ProvisionListenerBinding (/core/src/com/google/inject/spi/ProvisionListenerBinding.java)/**
+ * Binds keys (picked using a Matcher) to a provision listener. Listeners are created explicitly in
+ * a module using {@link Binder#bindListener(Matcher, ProvisionListener...)} statements:
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 4.0
+ */
+RequireAtInjectOnConstructorsOption (/core/src/com/google/inject/spi/RequireAtInjectOnConstructorsOption.java)/**
+ * A request to require explicit {@literal @}{@link Inject} annotations on constructors.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 4.0
+ */
+RequireExactBindingAnnotationsOption (/core/src/com/google/inject/spi/RequireExactBindingAnnotationsOption.java)/**
+ * A request to require exact binding annotations.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 4.0
+ */
+RequireExplicitBindingsOption (/core/src/com/google/inject/spi/RequireExplicitBindingsOption.java)/**
+ * A request to require explicit bindings.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 3.0
+ */
+ScopeBinding (/core/src/com/google/inject/spi/ScopeBinding.java)/**
+ * Registration of a scope annotation with the scope that implements it. Instances are created
+ * explicitly in a module using {@link com.google.inject.Binder#bindScope(Class, Scope) bindScope()}
+ * statements:
+ *
+ * <pre>
+ *     Scope recordScope = new RecordScope();
+ *     bindScope(RecordScoped.class, new RecordScope());</pre>
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+StaticInjectionRequest (/core/src/com/google/inject/spi/StaticInjectionRequest.java)/**
+ * A request to inject the static fields and methods of a type. Requests are created explicitly in a
+ * module using {@link com.google.inject.Binder#requestStaticInjection(Class[])
+ * requestStaticInjection()} statements:
+ *
+ * <pre>
+ *     requestStaticInjection(MyLegacyService.class);</pre>
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+TypeConverter (/core/src/com/google/inject/spi/TypeConverter.java)/**
+ * Converts constant string values to a different type.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @since 2.0
+ */
+TypeConverterBinding (/core/src/com/google/inject/spi/TypeConverterBinding.java)/**
+ * Registration of type converters for matching target types. Instances are created explicitly in a
+ * module using {@link com.google.inject.Binder#convertToTypes(Matcher, TypeConverter)
+ * convertToTypes()} statements:
+ *
+ * <pre>
+ *     convertToTypes(Matchers.only(TypeLiteral.get(DateTime.class)), new DateTimeConverter());
+ * </pre>
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+TypeEncounter (/core/src/com/google/inject/spi/TypeEncounter.java)/**
+ * Context of an injectable type encounter. Enables reporting errors, registering injection
+ * listeners and binding method interceptors for injectable type {@code I}. It is an error to use an
+ * encounter after the {@link TypeListener#hear(TypeLiteral, TypeEncounter) hear()} method has
+ * returned.
+ *
+ * @param <I> the injectable type encountered
+ * @since 2.0
+ */
+TypeListener (/core/src/com/google/inject/spi/TypeListener.java)/**
+ * Listens for Guice to encounter injectable types. If a given type has its constructor injected in
+ * one situation but only its methods and fields injected in another, Guice will notify this
+ * listener once.
+ *
+ * <p>Useful for extra type checking, {@linkplain TypeEncounter#register(InjectionListener)
+ * registering injection listeners}, and {@linkplain TypeEncounter#bindInterceptor(
+ * com.google.inject.matcher.Matcher, org.aopalliance.intercept.MethodInterceptor[]) binding method
+ * interceptors}.
+ *
+ * @since 2.0
+ */
+TypeListenerBinding (/core/src/com/google/inject/spi/TypeListenerBinding.java)/**
+ * Binds types (picked using a Matcher) to an type listener. Registrations are created explicitly in
+ * a module using {@link com.google.inject.Binder#bindListener(Matcher, TypeListener)} statements:
+ *
+ * <pre>
+ *     register(only(new TypeLiteral&lt;PaymentService&lt;CreditCard>>() {}), listener);</pre>
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+UntargettedBinding (/core/src/com/google/inject/spi/UntargettedBinding.java)/**
+ * An untargetted binding. This binding indicates that the injector should use its implicit binding
+ * strategies to resolve injections.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+TypeLiteral (/core/src/com/google/inject/TypeLiteral.java)/**
+ * Represents a generic type {@code T}. Java doesn't yet provide a way to represent generic types,
+ * so this class does. Forces clients to create a subclass of this class which enables retrieval of
+ * the type information even at runtime.
+ *
+ * <p>For example, to create a type literal for {@code List<String>}, you can create an empty
+ * anonymous inner class:
+ *
+ * <p>{@code TypeLiteral<List<String>> list = new TypeLiteral<List<String>>() {};}
+ *
+ * <p>Along with modeling generic types, this class can resolve type parameters. For example, to
+ * figure out what type {@code keySet()} returns on a {@code Map<Integer, String>}, use this code:
+ *
+ * <pre>{@code
+ * TypeLiteral<Map<Integer, String>> mapType
+ *     = new TypeLiteral<Map<Integer, String>>() {};
+ * TypeLiteral<?> keySetType
+ *     = mapType.getReturnType(Map.class.getMethod("keySet"));
+ * System.out.println(keySetType); // prints "Set<Integer>"
+ * }</pre>
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+OverriddenModuleBuilder (/core/src/com/google/inject/util/Modules.java)/** See the EDSL example at {@link Modules#override(Module[]) override()}. */
+Modules (/core/src/com/google/inject/util/Modules.java)/**
+ * Static utility methods for creating and working with instances of {@link Module}.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 2.0
+ */
+Providers (/core/src/com/google/inject/util/Providers.java)/**
+ * Static utility methods for creating and working with instances of {@link Provider}.
+ *
+ * @author Kevin Bourrillion (kevinb9n@gmail.com)
+ * @since 2.0
+ */
+Types (/core/src/com/google/inject/util/Types.java)/**
+ * Static methods for working with types.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @since 2.0
+ */
+AllTests (/core/test/com/google/inject/AllTests.java)/** @author crazybob@google.com (Bob Lee) */
+Asserts (/core/test/com/google/inject/Asserts.java)/** @author jessewilson@google.com (Jesse Wilson) */
+BinderTest (/core/test/com/google/inject/BinderTest.java)/** @author crazybob@google.com (Bob Lee) */
+TwoAtATimeScope (/core/test/com/google/inject/BinderTestSuite.java)/** This scope hands out each value exactly twice */
+BinderTestSuite (/core/test/com/google/inject/BinderTestSuite.java)/** @author jessewilson@google.com (Jesse Wilson) */
+BindingAnnotationTest (/core/test/com/google/inject/BindingAnnotationTest.java)/** @author crazybob@google.com (Bob Lee) */
+BindingTest (/core/test/com/google/inject/BindingTest.java)/**
+ * @author crazybob@google.com (Bob Lee)
+ */
+BoundInstanceInjectionTest (/core/test/com/google/inject/BoundInstanceInjectionTest.java)/** @author crazybob@google.com (Bob Lee) */
+BoundProviderTest (/core/test/com/google/inject/BoundProviderTest.java)/** @author crazybob@google.com (Bob Lee) */
+CircularDependencyTest (/core/test/com/google/inject/CircularDependencyTest.java)/**
+ * @author crazybob@google.com (Bob Lee)
+ * @author sameb@google.com (Sam Berlin)
+ */
+DuplicateBindingsTest (/core/test/com/google/inject/DuplicateBindingsTest.java)/**
+ * A suite of tests for duplicate bindings.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+EagerSingletonTest (/core/test/com/google/inject/EagerSingletonTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ErrorHandlingTest (/core/test/com/google/inject/ErrorHandlingTest.java)/** @author crazybob@google.com (Bob Lee) */
+ClientServiceWithDependencyInjection (/core/test/com/google/inject/example/ClientServiceWithDependencyInjection.java)/** @author crazybob@google.com (Bob Lee) */
+ClientServiceWithFactories (/core/test/com/google/inject/example/ClientServiceWithFactories.java)/** @author crazybob@google.com (Bob Lee) */
+ClientServiceWithGuice (/core/test/com/google/inject/example/ClientServiceWithGuice.java)/** @author crazybob@google.com (Bob Lee) */
+ClientServiceWithGuiceDefaults (/core/test/com/google/inject/example/ClientServiceWithGuiceDefaults.java)/** @author crazybob@google.com (Bob Lee) */
+GenericInjectionTest (/core/test/com/google/inject/GenericInjectionTest.java)/** @author crazybob@google.com (Bob Lee) */
+ImplicitBindingTest (/core/test/com/google/inject/ImplicitBindingTest.java)/** @author crazybob@google.com (Bob Lee) */
+IntegrationTest (/core/test/com/google/inject/IntegrationTest.java)/** @author crazybob@google.com (Bob Lee) */
+MapBinderWithTwoEntriesModule (/core/test/com/google/inject/internal/MapBinderTest.java)/** A simple module with a MapBinder with two entries. */
+MapBinderTest (/core/test/com/google/inject/internal/MapBinderTest.java)/** @author dpb@google.com (David P. Baker) */
+MoreTypesTest (/core/test/com/google/inject/internal/MoreTypesTest.java)/** @author schmitt@google.com (Peter Schmitt) */
+MultibinderTest (/core/test/com/google/inject/internal/MultibinderTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+OptionalBinderTest (/core/test/com/google/inject/internal/OptionalBinderTest.java)/** @author sameb@google.com (Sam Berlin) */
+ProxyFactoryTest (/core/test/com/google/inject/internal/ProxyFactoryTest.java)/** @author crazybob@google.com (Bob Lee) */
+RealElementTest (/core/test/com/google/inject/internal/RealElementTest.java)/** Tests for {@link com.google.inject.internal.RealElement}. */
+BindResult (/core/test/com/google/inject/internal/SpiUtils.java)/** The result of the binding. */
+SpiUtils (/core/test/com/google/inject/internal/SpiUtils.java)/**
+ * Utilities for testing the Multibinder & MapBinder extension SPI.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+UniqueAnnotationsTest (/core/test/com/google/inject/internal/UniqueAnnotationsTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+LineNumbersTest (/core/test/com/google/inject/internal/util/LineNumbersTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+WeakKeySetTest (/core/test/com/google/inject/internal/WeakKeySetTest.java)/**
+ * Tests for {@link WeakKeySet}.
+ *
+ * <p>Multibinding specific tests can be found in MultibinderTest and MapBinderTest.
+ *
+ * @author dweis@google.com (Daniel Weis)
+ */
+WeakKeySetUtils (/core/test/com/google/inject/internal/WeakKeySetUtils.java)/**
+ * Utilities for verifying com.google.inject.internal.WeakKeySet is not leaking memory.
+ *
+ * @author dweis@google.com (Daniel Weis)
+ */
+JitBindingsTest (/core/test/com/google/inject/JitBindingsTest.java)/**
+ * Some tests for {@link Binder#requireExplicitBindings()}
+ *
+ * @author sberlin@gmail.com (Sam Berlin)
+ */
+KeyTest (/core/test/com/google/inject/KeyTest.java)/** @author crazybob@google.com (Bob Lee) */
+LoggerInjectionTest (/core/test/com/google/inject/LoggerInjectionTest.java)/**
+ * Test built-in injection of loggers.
+ *
+ * @author jessewilson
+ */
+AbstractParallelMemberInjectionCallback (/core/test/com/google/inject/MembersInjectorTest.java)/** Callback for member injection. Uses a static type to be referable by getInstance(). */
+RecursiveMemberInjection (/core/test/com/google/inject/MembersInjectorTest.java)/** Member injection callback that injects itself. */
+MembersInjectorTest (/core/test/com/google/inject/MembersInjectorTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+MethodInterceptionTest (/core/test/com/google/inject/MethodInterceptionTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ModulesTest (/core/test/com/google/inject/ModulesTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ModuleTest (/core/test/com/google/inject/ModuleTest.java)/**
+ * Tests relating to modules.
+ *
+ * @author kevinb
+ */
+ProvidesIntoTest (/core/test/com/google/inject/multibindings/ProvidesIntoTest.java)/**
+ * Tests the various @ProvidesInto annotations.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+NamedEquivalanceTest (/core/test/com/google/inject/name/NamedEquivalanceTest.java)/**
+ * Tests that {@code javax.inject.Named} and {@code com.google.inject.name.Named} are completely
+ * interchangeable: bindings for one can be used to inject the other.
+ *
+ * @author cgdecker@gmail.com (Colin Decker)
+ */
+NamesTest (/core/test/com/google/inject/name/NamesTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+NullableInjectionPointTest (/core/test/com/google/inject/NullableInjectionPointTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+OptionalBindingTest (/core/test/com/google/inject/OptionalBindingTest.java)/**
+ * This test verifies the ways things are injected (ie. getInstance(), injectMembers(), bind to
+ * instance, and bind to provider instance) for all states of optional bindings (fields, methods,
+ * multiple-argument methods, provider fields, provider methods, constructors).
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ParentInjectorTest (/core/test/com/google/inject/ParentInjectorTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+PerformanceComparison (/core/test/com/google/inject/PerformanceComparison.java)/**
+ * A semi-useless microbenchmark. Spring and Guice constuct the same object graph a bunch of times,
+ * and we see who can construct the most per second. As of this writing Guice is more than 50X
+ * faster. Also useful for comparing pure Java configuration options.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+SecondFailingPrivateModule (/core/test/com/google/inject/PrivateModuleTest.java)/** A second class, so we can see another name in the source list. */
+PrivateModuleTest (/core/test/com/google/inject/PrivateModuleTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ProviderInjectionTest (/core/test/com/google/inject/ProviderInjectionTest.java)/** @author crazybob@google.com (Bob Lee) */
+ProvisionExceptionsTest (/core/test/com/google/inject/ProvisionExceptionsTest.java)/**
+ * Tests that ProvisionExceptions are readable and clearly indicate to the user what went wrong with
+ * their code.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+LikeScala (/core/test/com/google/inject/ProvisionExceptionTest.java)/**
+   * In Scala, fields automatically get accessor methods with the same name. So we don't do
+   * misplaced-binding annotation detection if the offending method has a matching field.
+   */
+ProvisionExceptionTest (/core/test/com/google/inject/ProvisionExceptionTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ReflectionTest (/core/test/com/google/inject/ReflectionTest.java)/** @author crazybob@google.com (Bob Lee) */
+RequestInjectionTest (/core/test/com/google/inject/RequestInjectionTest.java)/** @author crazybob@google.com (Bob Lee) */
+RequireAtInjectOnConstructorsTest (/core/test/com/google/inject/RequireAtInjectOnConstructorsTest.java)/**
+ * Tests for {@link Binder#requireAtInjectOnConstructors()}
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+S (/core/test/com/google/inject/ScopesTest.java)/**
+   * Should only be created by {@link SBarrierProvider}.
+   *
+   * <p>{@code S} stands for synchronization.
+   *
+   * @see SBarrierProvider
+   */
+SBarrierProvider (/core/test/com/google/inject/ScopesTest.java)/**
+   * Provides all the instances of S simultaneously using {@link CyclicBarrier} with {@code
+   * nThreads}. Intended to be used for threads synchronization during injection.
+   */
+ScopeMutatingProvisionListener (/core/test/com/google/inject/ScopesTest.java)/** Uses Scope's public API to add a 'marker' into the provisioned instance's scope. */
+ScopesTest (/core/test/com/google/inject/ScopesTest.java)/** @author crazybob@google.com (Bob Lee) */
+SerializationTest (/core/test/com/google/inject/SerializationTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+BindingTargetVisitorTest (/core/test/com/google/inject/spi/BindingTargetVisitorTest.java)/**
+ * Simple little test that should compile. Ensures that wildcards on the generics are correct.
+ *
+ * @author phopkins@gmail.com
+ */
+ElementApplyToTest (/core/test/com/google/inject/spi/ElementApplyToTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ElementSourceTest (/core/test/com/google/inject/spi/ElementSourceTest.java)/** Tests for {@link ElementSource}. */
+ExternalFailureVisitor (/core/test/com/google/inject/spi/ElementsTest.java)/**
+   * By extending this interface rather than FailingElementVisitor, the source of the error doesn't
+   * need to contain the string {@code ElementsTest.java}.
+   */
+ElementsTest (/core/test/com/google/inject/spi/ElementsTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+HasDependenciesTest (/core/test/com/google/inject/spi/HasDependenciesTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+InjectionPointTest (/core/test/com/google/inject/spi/InjectionPointTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+InjectorSpiTest (/core/test/com/google/inject/spi/InjectorSpiTest.java)/** @author sberlin@gmail.com (Sam Berlin) */
+MessageTest (/core/test/com/google/inject/spi/MessageTest.java)/** Tests for {@link Message}. */
+ModuleAnnotatedMethodScannerTest (/core/test/com/google/inject/spi/ModuleAnnotatedMethodScannerTest.java)/** Tests for {@link ModuleAnnotatedMethodScanner} usage. */
+ModuleRewriterTest (/core/test/com/google/inject/spi/ModuleRewriterTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+ModuleSourceTest (/core/test/com/google/inject/spi/ModuleSourceTest.java)/** Tests for {@link ModuleSource}. */
+ProviderMethodsTest (/core/test/com/google/inject/spi/ProviderMethodsTest.java)/** @author crazybob@google.com (Bob Lee) */
+SpiBindingsTest (/core/test/com/google/inject/spi/SpiBindingsTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+SuperclassTest (/core/test/com/google/inject/SuperclassTest.java)/** @author crazybob@google.com (Bob Lee) */
+TypeConversionTest (/core/test/com/google/inject/TypeConversionTest.java)/** @author crazybob@google.com (Bob Lee) */
+TypeListenerTest (/core/test/com/google/inject/TypeListenerTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+TypeLiteralInjectionTest (/core/test/com/google/inject/TypeLiteralInjectionTest.java)/**
+ * Demonstrates type reification.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+TypeLiteralTest (/core/test/com/google/inject/TypeLiteralTest.java)/** @author crazybob@google.com (Bob Lee) */
+TypeLiteralTypeResolutionTest (/core/test/com/google/inject/TypeLiteralTypeResolutionTest.java)/**
+ * This test checks that TypeLiteral can perform type resolution on its members.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+NoopOverrideTest (/core/test/com/google/inject/util/NoopOverrideTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+OverrideModuleTest (/core/test/com/google/inject/util/OverrideModuleTest.java)/** @author sberlin@gmail.com (Sam Berlin) */
+ProvidersTest (/core/test/com/google/inject/util/ProvidersTest.java)/**
+ * Unit tests for {@link Providers}.
+ *
+ * @author Kevin Bourrillion (kevinb9n@gmail.com)
+ */
+TypesTest (/core/test/com/google/inject/util/TypesTest.java)/** @author jessewilson@google.com (Jesse Wilson) */
+OSGiTestActivator (/core/test/com/googlecode/guice/bundle/OSGiTestActivator.java)/**
+ * Test Guice from inside an OSGi bundle activator.
+ *
+ * @author mcculls@gmail.com (Stuart McCulloch)
+ */
+TestVisibilityClassLoader (/core/test/com/googlecode/guice/BytecodeGenTest.java)/** Custom URL classloader with basic visibility rules */
+ProxyTestImpl (/core/test/com/googlecode/guice/BytecodeGenTest.java)/**
+   * Note: this class must be marked as public or protected so that the Guice custom classloader
+   * will intercept it. Private and implementation classes are not intercepted by the custom
+   * classloader.
+   *
+   * @see com.google.inject.internal.BytecodeGen.Visibility
+   */
+BytecodeGenTest (/core/test/com/googlecode/guice/BytecodeGenTest.java)/**
+ * This test is in a separate package so we can test package-level visibility with confidence.
+ *
+ * @author mcculls@gmail.com (Stuart McCulloch)
+ */
+OSGiContainerTest (/core/test/com/googlecode/guice/OSGiContainerTest.java)/**
+ * Run various tests inside one or more OSGi containers.
+ *
+ * @author mcculls@gmail.com (Stuart McCulloch)
+ */
+Main (/examples/src/example/xml/Main.java)/** */
+BeanListener (/examples/src/example/xml/XmlBeanModule.java)/** Handles "binding" elements. */
+PropertyListener (/examples/src/example/xml/XmlBeanModule.java)/** Handles "property" elements. */
+AssistedConstructor (/extensions/assistedinject/src/com/google/inject/assistedinject/AssistedConstructor.java)/**
+ * Internal respresentation of a constructor annotated with {@link AssistedInject}
+ *
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+AssistedInjectBinding (/extensions/assistedinject/src/com/google/inject/assistedinject/AssistedInjectBinding.java)/**
+ * A binding for a factory created by FactoryModuleBuilder.
+ *
+ * @param <T> The fully qualified type of the factory.
+ * @since 3.0
+ * @author ramakrishna@google.com (Ramakrishna Rajanna)
+ */
+AssistedInjectTargetVisitor (/extensions/assistedinject/src/com/google/inject/assistedinject/AssistedInjectTargetVisitor.java)/**
+ * A visitor for the AssistedInject extension.
+ *
+ * <p>If your {@link BindingTargetVisitor} implements this interface, bindings created by using
+ * {@link FactoryModuleBuilder} will be visited through this interface.
+ *
+ * @since 3.0
+ * @author ramakrishna@google.com (Ramakrishna Rajanna)
+ */
+AssistedMethod (/extensions/assistedinject/src/com/google/inject/assistedinject/AssistedMethod.java)/**
+ * Details about how a method in an assisted inject factory will be assisted.
+ *
+ * @since 3.0
+ * @author ramakrishna@google.com (Ramakrishna Rajanna)
+ */
+BindingCollector (/extensions/assistedinject/src/com/google/inject/assistedinject/BindingCollector.java)/**
+ * Utility class for collecting factory bindings. Used for configuring {@link FactoryProvider2}.
+ *
+ * @author schmitt@google.com (Peter Schmitt)
+ */
+FactoryModuleBuilder (/extensions/assistedinject/src/com/google/inject/assistedinject/FactoryModuleBuilder.java)/**
+ * Provides a factory that combines the caller's arguments with injector-supplied values to
+ * construct objects.
+ *
+ * <h3>Defining a factory</h3>
+ *
+ * Create an interface whose methods return the constructed type, or any of its supertypes. The
+ * method's parameters are the arguments required to build the constructed type.
+ *
+ * <pre>public interface PaymentFactory {
+ *   Payment create(Date startDate, Money amount);
+ * }</pre>
+ *
+ * You can name your factory methods whatever you like, such as <i>create</i>, <i>createPayment</i>
+ * or <i>newPayment</i>.
+ *
+ * <h3>Creating a type that accepts factory parameters</h3>
+ *
+ * {@code constructedType} is a concrete class with an {@literal @}{@link com.google.inject.Inject
+ * Inject}-annotated constructor. In addition to injector-supplied parameters, the constructor
+ * should have parameters that match each of the factory method's parameters. Each factory-supplied
+ * parameter requires an {@literal @}{@link Assisted} annotation. This serves to document that the
+ * parameter is not bound by your application's modules.
+ *
+ * <pre>public class RealPayment implements Payment {
+ *   {@literal @}Inject
+ *   public RealPayment(
+ *      CreditService creditService,
+ *      AuthService authService,
+ *      <strong>{@literal @}Assisted Date startDate</strong>,
+ *      <strong>{@literal @}Assisted Money amount</strong>) {
+ *     ...
+ *   }
+ * }</pre>
+ *
+ * <h3>Multiple factory methods for the same type</h3>
+ *
+ * If the factory contains many methods that return the same type, you can create multiple
+ * constructors in your concrete class, each constructor marked with with {@literal @}{@link
+ * AssistedInject}, in order to match the different parameters types of the factory methods.
+ *
+ * <pre>public interface PaymentFactory {
+ *    Payment create(Date startDate, Money amount);
+ *    Payment createWithoutDate(Money amount);
+ * }
+ *
+ * public class RealPayment implements Payment {
+ *  {@literal @}AssistedInject
+ *   public RealPayment(
+ *      CreditService creditService,
+ *      AuthService authService,
+ *     <strong>{@literal @}Assisted Date startDate</strong>,
+ *     <strong>{@literal @}Assisted Money amount</strong>) {
+ *     ...
+ *   }
+ *
+ *  {@literal @}AssistedInject
+ *   public RealPayment(
+ *      CreditService creditService,
+ *      AuthService authService,
+ *     <strong>{@literal @}Assisted Money amount</strong>) {
+ *     ...
+ *   }
+ * }</pre>
+ *
+ * <h3>Configuring simple factories</h3>
+ *
+ * In your {@link Module module}, install a {@code FactoryModuleBuilder} that creates the factory:
+ *
+ * <pre>install(new FactoryModuleBuilder()
+ *     .implement(Payment.class, RealPayment.class)
+ *     .build(PaymentFactory.class));</pre>
+ *
+ * As a side-effect of this binding, Guice will inject the factory to initialize it for use. The
+ * factory cannot be used until the injector has been initialized.
+ *
+ * <h3>Configuring complex factories</h3>
+ *
+ * Factories can create an arbitrary number of objects, one per each method. Each factory method can
+ * be configured using <code>.implement</code>.
+ *
+ * <pre>public interface OrderFactory {
+ *    Payment create(Date startDate, Money amount);
+ *    Shipment create(Customer customer, Item item);
+ *    Receipt create(Payment payment, Shipment shipment);
+ * }
+ *
+ * [...]
+ *
+ * install(new FactoryModuleBuilder()
+ *     .implement(Payment.class, RealPayment.class)
+ *     // excluding .implement for Shipment means the implementation class
+ *     // will be 'Shipment' itself, which is legal if it's not an interface.
+ *     .implement(Receipt.class, RealReceipt.class)
+ *     .build(OrderFactory.class));</pre>
+ *
+ * </pre>
+ *
+ * <h3>Using the factory</h3>
+ *
+ * Inject your factory into your application classes. When you use the factory, your arguments will
+ * be combined with values from the injector to construct an instance.
+ *
+ * <pre>public class PaymentAction {
+ *   {@literal @}Inject private PaymentFactory paymentFactory;
+ *
+ *   public void doPayment(Money amount) {
+ *     Payment payment = paymentFactory.create(new Date(), amount);
+ *     payment.apply();
+ *   }
+ * }</pre>
+ *
+ * <h3>Making parameter types distinct</h3>
+ *
+ * The types of the factory method's parameters must be distinct. To use multiple parameters of the
+ * same type, use a named {@literal @}{@link Assisted} annotation to disambiguate the parameters.
+ * The names must be applied to the factory method's parameters:
+ *
+ * <pre>public interface PaymentFactory {
+ *   Payment create(
+ *       <strong>{@literal @}Assisted("startDate")</strong> Date startDate,
+ *       <strong>{@literal @}Assisted("dueDate")</strong> Date dueDate,
+ *       Money amount);
+ * } </pre>
+ *
+ * ...and to the concrete type's constructor parameters:
+ *
+ * <pre>public class RealPayment implements Payment {
+ *   {@literal @}Inject
+ *   public RealPayment(
+ *      CreditService creditService,
+ *      AuthService authService,
+ *      <strong>{@literal @}Assisted("startDate")</strong> Date startDate,
+ *      <strong>{@literal @}Assisted("dueDate")</strong> Date dueDate,
+ *      <strong>{@literal @}Assisted</strong> Money amount) {
+ *     ...
+ *   }
+ * }</pre>
+ *
+ * <h3>Values are created by Guice</h3>
+ *
+ * Returned factories use child injectors to create values. The values are eligible for method
+ * interception. In addition, {@literal @}{@literal Inject} members will be injected before they are
+ * returned.
+ *
+ * <h3>More configuration options</h3>
+ *
+ * In addition to simply specifying an implementation class for any returned type, factories' return
+ * values can be automatic or can be configured to use annotations:
+ *
+ * <p>If you just want to return the types specified in the factory, do not configure any
+ * implementations:
+ *
+ * <pre>public interface FruitFactory {
+ *   Apple getApple(Color color);
+ * }
+ * ...
+ * protected void configure() {
+ *   install(new FactoryModuleBuilder().build(FruitFactory.class));
+ * }</pre>
+ *
+ * Note that any type returned by the factory in this manner needs to be an implementation class.
+ *
+ * <p>To return two different implementations for the same interface from your factory, use binding
+ * annotations on your return types:
+ *
+ * <pre>interface CarFactory {
+ *   {@literal @}Named("fast") Car getFastCar(Color color);
+ *   {@literal @}Named("clean") Car getCleanCar(Color color);
+ * }
+ * ...
+ * protected void configure() {
+ *   install(new FactoryModuleBuilder()
+ *       .implement(Car.class, Names.named("fast"), Porsche.class)
+ *       .implement(Car.class, Names.named("clean"), Prius.class)
+ *       .build(CarFactory.class));
+ * }</pre>
+ *
+ * <h3>Implementation limitations</h3>
+ *
+ * As a limitation of the implementation, it is prohibited to declare a factory method that accepts
+ * a {@code Provider} as one of its arguments.
+ *
+ * @since 3.0
+ * @author schmitt@google.com (Peter Schmitt)
+ */
+FactoryProvider (/extensions/assistedinject/src/com/google/inject/assistedinject/FactoryProvider.java)/**
+ * <strong>Obsolete.</strong> Prefer {@link FactoryModuleBuilder} for its more concise API and
+ * additional capability.
+ *
+ * <p>Provides a factory that combines the caller's arguments with injector-supplied values to
+ * construct objects.
+ *
+ * <h3>Defining a factory</h3>
+ *
+ * Create an interface whose methods return the constructed type, or any of its supertypes. The
+ * method's parameters are the arguments required to build the constructed type.
+ *
+ * <pre>public interface PaymentFactory {
+ *   Payment create(Date startDate, Money amount);
+ * }</pre>
+ *
+ * You can name your factory methods whatever you like, such as <i>create</i>, <i>createPayment</i>
+ * or <i>newPayment</i>.
+ *
+ * <h3>Creating a type that accepts factory parameters</h3>
+ *
+ * {@code constructedType} is a concrete class with an {@literal @}{@link Inject}-annotated
+ * constructor. In addition to injector-supplied parameters, the constructor should have parameters
+ * that match each of the factory method's parameters. Each factory-supplied parameter requires an
+ * {@literal @}{@link Assisted} annotation. This serves to document that the parameter is not bound
+ * by your application's modules.
+ *
+ * <pre>public class RealPayment implements Payment {
+ *   {@literal @}Inject
+ *   public RealPayment(
+ *      CreditService creditService,
+ *      AuthService authService,
+ *      <strong>{@literal @}Assisted Date startDate</strong>,
+ *      <strong>{@literal @}Assisted Money amount</strong>) {
+ *     ...
+ *   }
+ * }</pre>
+ *
+ * Any parameter that permits a null value should also be annotated {@code @Nullable}.
+ *
+ * <h3>Configuring factories</h3>
+ *
+ * In your {@link com.google.inject.Module module}, bind the factory interface to the returned
+ * factory:
+ *
+ * <pre>bind(PaymentFactory.class).toProvider(
+ *     FactoryProvider.newFactory(PaymentFactory.class, RealPayment.class));</pre>
+ *
+ * As a side-effect of this binding, Guice will inject the factory to initialize it for use. The
+ * factory cannot be used until the injector has been initialized.
+ *
+ * <h3>Using the factory</h3>
+ *
+ * Inject your factory into your application classes. When you use the factory, your arguments will
+ * be combined with values from the injector to construct an instance.
+ *
+ * <pre>public class PaymentAction {
+ *   {@literal @}Inject private PaymentFactory paymentFactory;
+ *
+ *   public void doPayment(Money amount) {
+ *     Payment payment = paymentFactory.create(new Date(), amount);
+ *     payment.apply();
+ *   }
+ * }</pre>
+ *
+ * <h3>Making parameter types distinct</h3>
+ *
+ * The types of the factory method's parameters must be distinct. To use multiple parameters of the
+ * same type, use a named {@literal @}{@link Assisted} annotation to disambiguate the parameters.
+ * The names must be applied to the factory method's parameters:
+ *
+ * <pre>public interface PaymentFactory {
+ *   Payment create(
+ *       <strong>{@literal @}Assisted("startDate")</strong> Date startDate,
+ *       <strong>{@literal @}Assisted("dueDate")</strong> Date dueDate,
+ *       Money amount);
+ * } </pre>
+ *
+ * ...and to the concrete type's constructor parameters:
+ *
+ * <pre>public class RealPayment implements Payment {
+ *   {@literal @}Inject
+ *   public RealPayment(
+ *      CreditService creditService,
+ *      AuthService authService,
+ *      <strong>{@literal @}Assisted("startDate")</strong> Date startDate,
+ *      <strong>{@literal @}Assisted("dueDate")</strong> Date dueDate,
+ *      <strong>{@literal @}Assisted</strong> Money amount) {
+ *     ...
+ *   }
+ * }</pre>
+ *
+ * <h3>Values are created by Guice</h3>
+ *
+ * Returned factories use child injectors to create values. The values are eligible for method
+ * interception. In addition, {@literal @}{@literal Inject} members will be injected before they are
+ * returned.
+ *
+ * <h3>Backwards compatibility using {@literal @}AssistedInject</h3>
+ *
+ * Instead of the {@literal @}Inject annotation, you may annotate the constructed classes with
+ * {@literal @}{@link AssistedInject}. This triggers a limited backwards-compatability mode.
+ *
+ * <p>Instead of matching factory method arguments to constructor parameters using their names, the
+ * <strong>parameters are matched by their order</strong>. The first factory method argument is used
+ * for the first {@literal @}Assisted constructor parameter, etc.. Annotation names have no effect.
+ *
+ * <p>Returned values are <strong>not created by Guice</strong>. These types are not eligible for
+ * method interception. They do receive post-construction member injection.
+ *
+ * @param <F> The factory interface
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @author dtm@google.com (Daniel Martin)
+ * @deprecated use {@link FactoryModuleBuilder} instead.
+ */
+AssistData (/extensions/assistedinject/src/com/google/inject/assistedinject/FactoryProvider2.java)/** All the data necessary to perform an assisted inject. */
+FactoryProvider2 (/extensions/assistedinject/src/com/google/inject/assistedinject/FactoryProvider2.java)/**
+ * The newer implementation of factory provider. This implementation uses a child injector to create
+ * values.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @author dtm@google.com (Daniel Martin)
+ * @author schmitt@google.com (Peter Schmitt)
+ * @author sameb@google.com (Sam Berlin)
+ */
+Parameter (/extensions/assistedinject/src/com/google/inject/assistedinject/Parameter.java)/**
+ * Models a method or constructor parameter.
+ *
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ParameterListKey (/extensions/assistedinject/src/com/google/inject/assistedinject/ParameterListKey.java)/**
+ * A list of {@link TypeLiteral}s to match an injectable Constructor's assited parameter types to
+ * the corresponding factory method.
+ *
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ExtensionSpiTest (/extensions/assistedinject/test/com/google/inject/assistedinject/ExtensionSpiTest.java)/**
+ * Tests for AssistedInject Spi.
+ *
+ * @author ramakrishna@google.com (Ramakrishna Rajanna)
+ */
+FactoryProviderTest (/extensions/assistedinject/test/com/google/inject/assistedinject/FactoryProviderTest.java)/**
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+ManyConstructorsTest (/extensions/assistedinject/test/com/google/inject/assistedinject/ManyConstructorsTest.java)/** @author sameb@google.com (Sam Berlin) */
+Annotations (/extensions/dagger-adapter/src/com/google/inject/daggeradapter/Annotations.java)/** Extensions for {@link Annotation}. */
+DaggerCompatibilityModule (/extensions/dagger-adapter/src/com/google/inject/daggeradapter/DaggerAdapter.java)/**
+   * A Module that adapts Dagger {@code @Module}-annotated types to contribute configuration to an
+   * {@link com.google.inject.Injector} using a dagger-specific {@link
+   * ModuleAnnotatedMethodScanner}.
+   */
+DaggerAdapter (/extensions/dagger-adapter/src/com/google/inject/daggeradapter/DaggerAdapter.java)/**
+ * Adapts classes annotated with {@link @dagger.Module} such that their {@link @dagger.Provides}
+ * methods can be properly invoked by Guice to perform their provision operations.
+ *
+ * <p>Simple example:
+ *
+ * <pre>{@code
+ * Guice.createInjector(
+ *   DaggerAdapter.from(SomeDaggerModule.class, new AnotherModuleWithConstructor());
+ * }</pre>
+ *
+ * <p>For modules with no instance binding methods, prefer using a class literal. If there are
+ * instance binding methods, an instance of the module must be passed.
+ *
+ * <p>Any class literals specified by {@code dagger.Module(includes = ...)} transitively will be
+ * included. Modules are de-duplicated, though multiple module instances of the same type is an
+ * error. Specifying a module instance and a class literal is also an error.
+ *
+ * <p>Some notes on usage and compatibility.
+ *
+ * <ul>
+ *   <li>Dagger provider methods have a "SET_VALUES" provision mode not supported by Guice.
+ *   <li>MapBindings are not yet implemented (pending).
+ *   <li>Be careful about stateful modules. In contrast to Dagger (where components are expected to
+ *       be recreated on-demand with new Module instances), Guice typically has a single injector
+ *       with a long lifetime, so your module instance will be used throughout the lifetime of the
+ *       entire app.
+ *   <li>Dagger 1.x uses {@link @Singleton} for all scopes, including shorter-lived scopes like
+ *       per-request or per-activity. Using modules written with Dagger 1.x usage in mind may result
+ *       in mis-scoped objects.
+ *   <li>Dagger 2.x supports custom scope annotations, but for use in Guice, a custom scope
+ *       implementation must be registered in order to support the custom lifetime of that
+ *       annotation.
+ * </ul>
+ *
+ * @author cgruber@google.com (Christian Gruber)
+ */
+DaggerMethodScanner (/extensions/dagger-adapter/src/com/google/inject/daggeradapter/DaggerMethodScanner.java)/**
+ * A scanner to process provider methods on Dagger modules.
+ *
+ * @author cgruber@google.com (Christian Gruber)
+ */
+Keys (/extensions/dagger-adapter/src/com/google/inject/daggeradapter/Keys.java)/** Utility methods for creating {@link Key}s. */
+SupportedAnnotations (/extensions/dagger-adapter/src/com/google/inject/daggeradapter/SupportedAnnotations.java)/** Collections of annotations that are supported by {@link DaggerAdapter}. */
+GrapherParameters (/extensions/grapher/src/com/google/inject/grapher/AbstractInjectorGrapher.java)/**
+   * Parameters used to override default settings of the grapher.
+   *
+   * @since 4.0
+   */
+AbstractInjectorGrapher (/extensions/grapher/src/com/google/inject/grapher/AbstractInjectorGrapher.java)/**
+ * Abstract injector grapher that builds the dependency graph but doesn't render it.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+Alias (/extensions/grapher/src/com/google/inject/grapher/Alias.java)/**
+ * Alias between two nodes. Causes the 'from' node to be aliased with the 'to' node, which means
+ * that the 'from' node is not rendered and all edges going to it instead go to the 'to' node.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+AliasCreator (/extensions/grapher/src/com/google/inject/grapher/AliasCreator.java)/**
+ * Creator of node aliases. Used by dependency graphers to merge nodes in the internal Guice graph
+ * into a single node on the rendered graph.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+BindingEdge (/extensions/grapher/src/com/google/inject/grapher/BindingEdge.java)/**
+ * Edge that connects an interface to the type or instance that is bound to implement it.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ * @since 4.0 (since 2.0 as an interface)
+ */
+EdgeVisitor (/extensions/grapher/src/com/google/inject/grapher/DefaultEdgeCreator.java)/**
+   * {@link BindingTargetVisitor} that adds edges to the graph based on the visited {@link Binding}.
+   */
+DefaultEdgeCreator (/extensions/grapher/src/com/google/inject/grapher/DefaultEdgeCreator.java)/**
+ * Default edge creator.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ */
+NodeVisitor (/extensions/grapher/src/com/google/inject/grapher/DefaultNodeCreator.java)/**
+   * {@link BindingTargetVisitor} that adds nodes to the graph based on the visited {@link Binding}.
+   */
+DefaultNodeCreator (/extensions/grapher/src/com/google/inject/grapher/DefaultNodeCreator.java)/**
+ * Default node creator.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ */
+DefaultRootKeySetCreator (/extensions/grapher/src/com/google/inject/grapher/DefaultRootKeySetCreator.java)/**
+ * Root key set creator that starts with all types that are not Guice internal types or the {@link
+ * Logger} type.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+DependencyEdge (/extensions/grapher/src/com/google/inject/grapher/DependencyEdge.java)/**
+ * Edge from a class or {@link InjectionPoint} to the interface node that will satisfy the
+ * dependency.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ * @since 4.0 (since 2.0 as an interface)
+ */
+Edge (/extensions/grapher/src/com/google/inject/grapher/Edge.java)/**
+ * Edge in a guice dependency graph.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+EdgeCreator (/extensions/grapher/src/com/google/inject/grapher/EdgeCreator.java)/**
+ * Creator of graph edges to render. All edges will be rendered on the graph after node aliasing is
+ * performed.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+GraphvizEdge (/extensions/grapher/src/com/google/inject/grapher/graphviz/GraphvizEdge.java)/**
+ * Data object to encapsulate the attributes of Graphviz edges that we're interested in drawing.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+GraphvizGrapher (/extensions/grapher/src/com/google/inject/grapher/graphviz/GraphvizGrapher.java)/**
+ * {@link com.google.inject.grapher.InjectorGrapher} implementation that writes out a Graphviz DOT
+ * file of the graph. Dependencies are bound in {@link GraphvizModule}.
+ *
+ * <p>Specify the {@link PrintWriter} to output to with {@link #setOut(PrintWriter)}.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ * @since 4.0
+ */
+GraphvizModule (/extensions/grapher/src/com/google/inject/grapher/graphviz/GraphvizModule.java)/**
+ * Module that provides classes needed by {@link GraphvizGrapher}.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+GraphvizNode (/extensions/grapher/src/com/google/inject/grapher/graphviz/GraphvizNode.java)/**
+ * Data object to encapsulate the attributes of Graphviz nodes that we're interested in drawing.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+PortIdFactory (/extensions/grapher/src/com/google/inject/grapher/graphviz/PortIdFactory.java)/**
+ * Interface for a service that returns Graphviz port IDs, used for naming the rows in {@link
+ * com.google.inject.grapher.ImplementationNode}-displaying {@link GraphvizNode}s.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+PortIdFactoryImpl (/extensions/grapher/src/com/google/inject/grapher/graphviz/PortIdFactoryImpl.java)/**
+ * Implementation of {@link PortIdFactory}. Bound in {@link GraphvizModule}.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+ImplementationNode (/extensions/grapher/src/com/google/inject/grapher/ImplementationNode.java)/**
+ * Node for types that have {@link com.google.inject.spi.Dependency}s and are bound to {@link
+ * InterfaceNode}s. These nodes will often have fields for {@link Member}s that are {@link
+ * com.google.inject.spi.InjectionPoint}s.
+ *
+ * @see DependencyEdge
+ * @author phopkins@gmail.com (Pete Hopkins)
+ * @since 4.0 (since 2.0 as an interface)
+ */
+InjectorGrapher (/extensions/grapher/src/com/google/inject/grapher/InjectorGrapher.java)/**
+ * Guice injector grapher. Renders the guice dependency graph for an injector. It can render the
+ * whole dependency graph or just transitive dependencies of a given set of nodes.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ * @since 4.0 (since 2.0 as a concrete class with a different API)
+ */
+InstanceNode (/extensions/grapher/src/com/google/inject/grapher/InstanceNode.java)/**
+ * Node for instances. Used when a type is bound to an instance.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+InterfaceNode (/extensions/grapher/src/com/google/inject/grapher/InterfaceNode.java)/**
+ * Node for an interface type that has been bound to an implementation class or instance.
+ *
+ * @see BindingEdge
+ * @author phopkins@gmail.com (Pete Hopkins)
+ * @since 4.0 (since 2.0 as an interface)
+ */
+NameFactory (/extensions/grapher/src/com/google/inject/grapher/NameFactory.java)/**
+ * Interface for a service that provides nice {@link String}s that we can display in the graph for
+ * the types that come up in {@link com.google.inject.Binding}s.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+Node (/extensions/grapher/src/com/google/inject/grapher/Node.java)/**
+ * Node in a guice dependency graph.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+NodeCreator (/extensions/grapher/src/com/google/inject/grapher/NodeCreator.java)/**
+ * Creator of graph nodes.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+NodeId (/extensions/grapher/src/com/google/inject/grapher/NodeId.java)/**
+ * ID of a node in the graph. An ID is given by a {@link Key} and a node type, which is used to
+ * distinguish instances and implementation classes for the same key. For example {@code
+ * bind(Integer.class).toInstance(42)} produces two nodes: an interface node with the key of {@code
+ * Key<Integer>} and an instance node with the same {@link Key} and value of 42.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+ProviderAliasCreator (/extensions/grapher/src/com/google/inject/grapher/ProviderAliasCreator.java)/**
+ * Alias creator that creates an alias for each {@link ProviderBinding}. These {@link Binding}s
+ * arise from an {@link InjectionPoint} for the {@link Provider} interface. Since this isn't very
+ * interesting information, we don't render this binding on the graph, and just alias the two nodes.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ */
+RootKeySetCreator (/extensions/grapher/src/com/google/inject/grapher/RootKeySetCreator.java)/**
+ * Creator of the default starting set of keys to graph. These keys and their transitive
+ * dependencies will be graphed.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ * @since 4.0
+ */
+ShortNameFactory (/extensions/grapher/src/com/google/inject/grapher/ShortNameFactory.java)/**
+ * Reasonable implementation for {@link NameFactory}. Mostly takes various {@link
+ * Object#toString()}s and strips package names out of them so that they'll fit on the graph.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+TransitiveDependencyVisitor (/extensions/grapher/src/com/google/inject/grapher/TransitiveDependencyVisitor.java)/**
+ * {@link com.google.inject.spi.BindingTargetVisitor} that returns a {@link Collection} of the
+ * {@link Key}s of each {@link Binding}'s dependencies. Used by {@link InjectorGrapher} to walk the
+ * dependency graph from a starting set of {@link Binding}s.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+AllTests (/extensions/grapher/test/com/google/inject/grapher/AllTests.java)/** @author phopkins@gmail.com (Pete Hopkins) */
+AssistedInjectModule (/extensions/grapher/test/com/google/inject/grapher/demo/AssistedInjectModule.java)/**
+ * Module to add {@link AssistedInject}-based elements to the demo {@link Injector}.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+BackToTheFutureModule (/extensions/grapher/test/com/google/inject/grapher/demo/BackToTheFutureModule.java)/**
+ * Module that adds a variety of different kinds of {@link Bindings} to be used to generate a
+ * comprehensive sample graph.
+ *
+ * @see InjectorGrapherDemo
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+DancePartyFactory (/extensions/grapher/test/com/google/inject/grapher/demo/DancePartyFactory.java)/**
+ * Interface to be used with {@link FactoryProvider}.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+InjectorGrapherDemo (/extensions/grapher/test/com/google/inject/grapher/demo/InjectorGrapherDemo.java)/**
+ * Application that instantiates {@link BackToTheFutureModule} and graphs it, writing the output to
+ * a DOT-formatted file (filename specified on the command line).
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+MultibinderModule (/extensions/grapher/test/com/google/inject/grapher/demo/MultibinderModule.java)/**
+ * Module to add {@link Multibinder}-based bindings to the injector.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+PrivateTestModule (/extensions/grapher/test/com/google/inject/grapher/demo/PrivateTestModule.java)/**
+ * Module to test private modules and exposed bindings.
+ *
+ * @author bojand@google.com (Bojan Djordjevic)
+ */
+ShortNameFactoryTest (/extensions/grapher/test/com/google/inject/grapher/ShortNameFactoryTest.java)/**
+ * Tests for {@link ShortNameFactory}.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+TransitiveDependencyVisitorTest (/extensions/grapher/test/com/google/inject/grapher/TransitiveDependencyVisitorTest.java)/**
+ * Tests for {@link TransitiveDependencyVisitor}.
+ *
+ * @author phopkins@gmail.com (Pete Hopkins)
+ */
+ManagedBindingMBean (/extensions/jmx/src/com/google/inject/tools/jmx/ManagedBindingMBean.java)/**
+ * JMX interface to bindings.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Manager (/extensions/jmx/src/com/google/inject/tools/jmx/Manager.java)/**
+ * Provides a JMX interface to Guice.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+JmxTest (/extensions/jmx/test/com/google/inject/tools/jmx/JmxTest.java)/** @author crazybob@google.com (Bob Lee) */
+JndiIntegration (/extensions/jndi/src/com/google/inject/jndi/JndiIntegration.java)/**
+ * Integrates Guice with JNDI. Requires a binding to {@link javax.naming.Context}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+MiniGuice (/extensions/mini/src/com/google/inject/mini/MiniGuice.java)/**
+ * Proof of concept. A tiny injector suitable for tiny applications.
+ *
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @since 3.0
+ */
+DynamicFinder (/extensions/persist/src/com/google/inject/persist/finder/DynamicFinder.java)/**
+ * Utility that helps you introspect dynamic finder methods.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+FinderDescriptor (/extensions/persist/src/com/google/inject/persist/jpa/JpaFinderProxy.java)/** A wrapper data class that caches information about a finder method. */
+JpaFinderProxy (/extensions/persist/src/com/google/inject/persist/jpa/JpaFinderProxy.java)/**
+ * TODO(dhanji): Make this work!!
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail.com)
+ */
+JpaLocalTxnInterceptor (/extensions/persist/src/com/google/inject/persist/jpa/JpaLocalTxnInterceptor.java)/** @author Dhanji R. Prasanna (dhanji@gmail.com) */
+JpaPersistModule (/extensions/persist/src/com/google/inject/persist/jpa/JpaPersistModule.java)/**
+ * JPA provider for guice persist.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+JpaPersistService (/extensions/persist/src/com/google/inject/persist/jpa/JpaPersistService.java)/** @author Dhanji R. Prasanna (dhanji@gmail.com) */
+PersistFilter (/extensions/persist/src/com/google/inject/persist/PersistFilter.java)/**
+ * Apply this filter to enable the HTTP Request unit of work and to have guice-persist manage the
+ * lifecycle of active units of work. The filter automatically starts and stops the relevant {@link
+ * PersistService} upon {@link javax.servlet.Filter#init(javax.servlet.FilterConfig)} and {@link
+ * javax.servlet.Filter#destroy()} respectively.
+ *
+ * <p>To be able to use the open session-in-view pattern (i.e. work per request), register this
+ * filter <b>once</b> in your Guice {@code ServletModule}. It is important that you register this
+ * filter before any other filter.
+ *
+ * <p>For multiple providers, you should register this filter once per provider, inside a private
+ * module for each persist module installed (this must be the same private module where the specific
+ * persist module is itself installed).
+ *
+ * <p>Example configuration:
+ *
+ * <pre>{@code
+ * public class MyModule extends ServletModule {
+ *   public void configureServlets() {
+ *     filter("/*").through(PersistFilter.class);
+ *
+ *     serve("/index.html").with(MyHtmlServlet.class);
+ *     // Etc.
+ *   }
+ * }
+ * }</pre>
+ *
+ * <p>This filter is thread safe and allows you to create injectors concurrently and deploy multiple
+ * guice-persist modules within the same injector, or even multiple injectors with persist modules
+ * withing the same JVM or web app.
+ *
+ * <p>This filter requires the Guice Servlet extension.
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail.com)
+ */
+PersistModule (/extensions/persist/src/com/google/inject/persist/PersistModule.java)/**
+ * Install this module to add guice-persist library support for JPA persistence providers.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+PersistService (/extensions/persist/src/com/google/inject/persist/PersistService.java)/**
+ * Persistence provider service. Use this to manage the overall startup and stop of the persistence
+ * module(s).
+ *
+ * <p>TODO(dhanji): Integrate with Service API when appropriate.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+UnitOfWork (/extensions/persist/src/com/google/inject/persist/UnitOfWork.java)/**
+ * This interface is used to gain manual control over the unit of work. This is mostly to do work in
+ * non-request, non-transactional threads. Or where more fine-grained control over the unit of work
+ * is required. Starting and ending a unit of work directly corresponds to opening and closing a
+ * {@code Session}, {@code EntityManager} or {@code ObjectContainer} respectively.
+ *
+ * <p>The Unit of Work referred to by UnitOfWork will always be local to the calling thread. Be
+ * careful to end() in a finally block. Neither JPA, nor Hibernate supports threadsafe sessions
+ * (reasoning behind thread-locality of Unit of Work semantics).
+ *
+ * <ul>
+ * <li>Using UnitOfWork with the PersistFilter inside a request is not recommended.
+ * <li>Using UnitOfWork with session-per-txn strategy is not terribly clever either.
+ * <li>Using UnitOfWork with session-per-request strategy but *outside* a request (i.e. in a
+ *     background or bootstrap thread) is probably a good use case.
+ * </ul>
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail com)
+ */
+AllTests (/extensions/persist/test/com/google/inject/persist/AllTests.java)/** @author dhanji@gmail.com (Dhanji R. Prasanna) */
+EdslTest (/extensions/persist/test/com/google/inject/persist/EdslTest.java)/** @author dhanji@google.com (Dhanji R. Prasanna) */
+JpaParentTestEntity (/extensions/persist/test/com/google/inject/persist/jpa/JpaParentTestEntity.java)/**
+ * Created with IntelliJ IDEA. On: 2/06/2007
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail.com)
+ * @since 1.0
+ */
+JpaTestEntity (/extensions/persist/test/com/google/inject/persist/jpa/JpaTestEntity.java)/** @author Dhanji R. Prasanna (dhanji@gmail.com) */
+AsyncService (/extensions/service/src/com/google/inject/service/AsyncService.java)/**
+ * An asynchronous implementation of {@link com.google.inject.service.Service} that provides
+ * convenience callbacks to create your own services.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+CompositeService (/extensions/service/src/com/google/inject/service/CompositeService.java)/**
+ * A service that composes other services together in a fixed order.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+Service (/extensions/service/src/com/google/inject/service/Service.java)/**
+ * An object with an operational state, asynchronous {@link #start()} and {@link #stop()} lifecycle
+ * methods to transition in and out of this state. Example services include http servers, RPC
+ * systems and timer tasks.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+AbstractServletModuleBinding (/extensions/servlet/src/com/google/inject/servlet/AbstractServletModuleBinding.java)/**
+ * Abstract implementation for all servlet module bindings
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ContinuingHttpServletRequest (/extensions/servlet/src/com/google/inject/servlet/ContinuingHttpServletRequest.java)/**
+ * A wrapper for requests that makes requests immutable, taking a snapshot of the original request.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+DefaultFilterPipeline (/extensions/servlet/src/com/google/inject/servlet/DefaultFilterPipeline.java)/**
+ * This default pipeline simply dispatches to web.xml's servlet pipeline.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ * @see com.google.inject.servlet.ManagedFilterPipeline See Also ManagedFilterPipeline.
+ */
+FilterChainInvocation (/extensions/servlet/src/com/google/inject/servlet/FilterChainInvocation.java)/**
+ * A Filter chain impl which basically passes itself to the "current" filter and iterates the chain
+ * on {@code doFilter()}. Modeled on something similar in Apache Tomcat.
+ *
+ * <p>Following this, it attempts to dispatch to guice-servlet's registered servlets using the
+ * ManagedServletPipeline.
+ *
+ * <p>And the end, it proceeds to the web.xml (default) servlet filter chain, if needed.
+ *
+ * @author Dhanji R. Prasanna
+ * @since 1.0
+ */
+FilterDefinition (/extensions/servlet/src/com/google/inject/servlet/FilterDefinition.java)/**
+ * An internal representation of a filter definition against a particular URI pattern.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+FilterPipeline (/extensions/servlet/src/com/google/inject/servlet/FilterPipeline.java)/**
+ * An internal dispatcher for guice-servlet registered servlets and filters. By default, we assume a
+ * Guice 1.0 style servlet module is in play. In other words, we dispatch directly to the web.xml
+ * pipeline after setting up scopes.
+ *
+ * <p>If on the other hand, {@link ServletModule} is used to register managed servlets and/or
+ * filters, then a different pipeline is bound instead. Which, after dispatching to Guice-injected
+ * filters and servlets continues to the web.xml pipeline (if necessary).
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+FiltersModuleBuilder (/extensions/servlet/src/com/google/inject/servlet/FiltersModuleBuilder.java)/**
+ * Builds the guice module that binds configured filters, with their wrapper FilterDefinitions. Is
+ * part of the binding EDSL. All Filters and Servlets are always bound as singletons.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+GuiceFilter (/extensions/servlet/src/com/google/inject/servlet/GuiceFilter.java)/**
+ * Apply this filter in web.xml above all other filters (typically), to all requests where you plan
+ * to use servlet scopes. This is also needed in order to dispatch requests to injectable filters
+ * and servlets:
+ *
+ * <pre>
+ *  &lt;filter&gt;
+ *    &lt;filter-name&gt;guiceFilter&lt;/filter-name&gt;
+ *    &lt;filter-class&gt;<b>com.google.inject.servlet.GuiceFilter</b>&lt;/filter-class&gt;
+ *  &lt;/filter&gt;
+ *
+ *  &lt;filter-mapping&gt;
+ *    &lt;filter-name&gt;guiceFilter&lt;/filter-name&gt;
+ *    &lt;url-pattern&gt;/*&lt;/url-pattern&gt;
+ *  &lt;/filter-mapping&gt;
+ *  </pre>
+ *
+ * This filter must appear before every filter that makes use of Guice injection or servlet scopes
+ * functionality. Typically, you will only register this filter in web.xml and register any other
+ * filters (and servlets) using a {@link ServletModule}.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+GuiceServletContextListener (/extensions/servlet/src/com/google/inject/servlet/GuiceServletContextListener.java)/**
+ * As of Guice 2.0 you can still use (your subclasses of) {@code GuiceServletContextListener} class
+ * as a logical place to create and configure your injector. This will ensure the injector is
+ * created when the web application is deployed.
+ *
+ * @author Kevin Bourrillion (kevinb@google.com)
+ * @since 2.0
+ */
+InstanceFilterBinding (/extensions/servlet/src/com/google/inject/servlet/InstanceFilterBinding.java)/**
+ * A binding to a single instance of a filter.
+ *
+ * @author sameb@google.com
+ * @since 3.0
+ */
+InstanceFilterBindingImpl (/extensions/servlet/src/com/google/inject/servlet/InstanceFilterBindingImpl.java)/**
+ * Default implementation of InstanceFilterBinding.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+InstanceServletBinding (/extensions/servlet/src/com/google/inject/servlet/InstanceServletBinding.java)/**
+ * A binding to a single instance of a servlet.
+ *
+ * @author sameb@google.com
+ * @since 3.0
+ */
+InstanceServletBindingImpl (/extensions/servlet/src/com/google/inject/servlet/InstanceServletBindingImpl.java)/**
+ * Default implementation of InstanceServletBinding.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+BackwardsCompatibleServletContextProvider (/extensions/servlet/src/com/google/inject/servlet/InternalServletModule.java)/**
+   * Special Provider that tries to obtain an injected servlet context, specific to the current
+   * injector, failing which, it falls back to the static singleton instance that is available in
+   * the legacy Guice Servlet.
+   */
+InternalServletModule (/extensions/servlet/src/com/google/inject/servlet/InternalServletModule.java)/**
+ * This is a left-factoring of all ServletModules installed in the system. In other words, this
+ * module contains the bindings common to all ServletModules, and is bound exactly once per
+ * injector.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+LinkedFilterBinding (/extensions/servlet/src/com/google/inject/servlet/LinkedFilterBinding.java)/**
+ * A linked binding to a filter.
+ *
+ * @author sameb@google.com
+ * @since 3.0
+ */
+LinkedFilterBindingImpl (/extensions/servlet/src/com/google/inject/servlet/LinkedFilterBindingImpl.java)/**
+ * Default implementation of LinkedFilterBinding.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+LinkedServletBinding (/extensions/servlet/src/com/google/inject/servlet/LinkedServletBinding.java)/**
+ * A linked binding to a servlet.
+ *
+ * @author sameb@google.com
+ * @since 3.0
+ */
+LinkedServletBindingImpl (/extensions/servlet/src/com/google/inject/servlet/LinkedServletBindingImpl.java)/**
+ * Default implementation of LinkedServletBinding.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ManagedFilterPipeline (/extensions/servlet/src/com/google/inject/servlet/ManagedFilterPipeline.java)/**
+ * Central routing/dispatch class handles lifecycle of managed filters, and delegates to the servlet
+ * pipeline.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+ManagedServletPipeline (/extensions/servlet/src/com/google/inject/servlet/ManagedServletPipeline.java)/**
+ * A wrapping dispatcher for servlets, in much the same way as {@link ManagedFilterPipeline} is for
+ * filters.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+CloseableScope (/extensions/servlet/src/com/google/inject/servlet/RequestScoper.java)/** Closeable subclass that does not throw any exceptions from close. */
+RequestScoper (/extensions/servlet/src/com/google/inject/servlet/RequestScoper.java)/** Object that can be used to apply a request scope to a block of code. */
+ScopingException (/extensions/servlet/src/com/google/inject/servlet/ScopingException.java)/**
+ * Exception thrown when there was a failure entering request scope.
+ *
+ * @author Chris Nokleberg
+ * @since 4.0
+ */
+ServletDefinition (/extensions/servlet/src/com/google/inject/servlet/ServletDefinition.java)/**
+ * An internal representation of a servlet definition mapped to a particular URI pattern. Also
+ * performs the request dispatch to that servlet. How nice and OO =)
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+FilterKeyBindingBuilder (/extensions/servlet/src/com/google/inject/servlet/ServletModule.java)/**
+   * See the EDSL examples at {@link ServletModule#configureServlets()}
+   *
+   * @since 2.0
+   */
+ServletKeyBindingBuilder (/extensions/servlet/src/com/google/inject/servlet/ServletModule.java)/**
+   * See the EDSL examples at {@link ServletModule#configureServlets()}
+   *
+   * @since 2.0
+   */
+ServletModule (/extensions/servlet/src/com/google/inject/servlet/ServletModule.java)/**
+ * Configures the servlet scopes and creates bindings for the servlet API objects so you can inject
+ * the request, response, session, etc.
+ *
+ * <p>You should subclass this module to register servlets and filters in the {@link
+ * #configureServlets()} method.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+ServletModuleBinding (/extensions/servlet/src/com/google/inject/servlet/ServletModuleBinding.java)/**
+ * A binding created by {@link ServletModule}.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ * @since 3.0
+ */
+ServletModuleTargetVisitor (/extensions/servlet/src/com/google/inject/servlet/ServletModuleTargetVisitor.java)/**
+ * A visitor for the servlet extension.
+ *
+ * <p>If your {@link BindingTargetVisitor} implements this interface, bindings created by using
+ * {@link ServletModule} will be visited through this interface.
+ *
+ * @since 3.0
+ * @author sameb@google.com (Sam Berlin)
+ */
+ServletScopes (/extensions/servlet/src/com/google/inject/servlet/ServletScopes.java)/**
+ * Servlet scopes.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+ServletsModuleBuilder (/extensions/servlet/src/com/google/inject/servlet/ServletsModuleBuilder.java)/**
+ * Builds the guice module that binds configured servlets, with their wrapper ServletDefinitions. Is
+ * part of the binding EDSL. Very similar to {@link com.google.inject.servlet.FiltersModuleBuilder}.
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail.com)
+ */
+ByteAccumulator (/extensions/servlet/src/com/google/inject/servlet/ServletUtils.java)/** Accumulates byte sequences while decoding strings, and encodes them into a StringBuilder. */
+ServletUtils (/extensions/servlet/src/com/google/inject/servlet/ServletUtils.java)/**
+ * Some servlet utility methods.
+ *
+ * @author ntang@google.com (Michael Tang)
+ */
+UriPatternMatcher (/extensions/servlet/src/com/google/inject/servlet/UriPatternMatcher.java)/**
+ * A general interface for matching a URI against a URI pattern. Guice-servlet provides regex and
+ * servlet-style pattern matching out of the box.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+ServletStyleUriPatternMatcher (/extensions/servlet/src/com/google/inject/servlet/UriPatternType.java)/**
+   * Matches URIs using the pattern grammar of the Servlet API and web.xml.
+   *
+   * @author dhanji@gmail.com (Dhanji R. Prasanna)
+   */
+RegexUriPatternMatcher (/extensions/servlet/src/com/google/inject/servlet/UriPatternType.java)/**
+   * Matches URIs using a regular expression.
+   *
+   * @author dhanji@gmail.com (Dhanji R. Prasanna)
+   */
+AllTests (/extensions/servlet/test/com/google/inject/servlet/AllTests.java)/** @author dhanji@gmail.com (Dhanji R. Prasanna) */
+ContextPathTest (/extensions/servlet/test/com/google/inject/servlet/ContextPathTest.java)/** Tests to make sure that servlets with a context path are handled right. */
+DummyFilterImpl (/extensions/servlet/test/com/google/inject/servlet/DummyFilterImpl.java)/**
+ * Used in unit tests to verify the EDSL.
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail com)
+ */
+DummyServlet (/extensions/servlet/test/com/google/inject/servlet/DummyServlet.java)/**
+ * Used in unit tests to verify the EDSL.
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail com)
+ */
+EdslTest (/extensions/servlet/test/com/google/inject/servlet/EdslTest.java)/**
+ * Sanity checks the EDSL and resultant bound module(s).
+ *
+ * @author Dhanji R. Prasanna (dhanji gmail com)
+ */
+ExtensionSpiTest (/extensions/servlet/test/com/google/inject/servlet/ExtensionSpiTest.java)/**
+ * A very basic test that servletmodule works with bindings.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+FilterDefinitionTest (/extensions/servlet/test/com/google/inject/servlet/FilterDefinitionTest.java)/**
+ * Tests the lifecycle of the encapsulated {@link FilterDefinition} class.
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail com)
+ */
+CountFilter (/extensions/servlet/test/com/google/inject/servlet/FilterDispatchIntegrationTest.java)/** A filter that keeps count of when it was called by increment a counter. */
+FilterDispatchIntegrationTest (/extensions/servlet/test/com/google/inject/servlet/FilterDispatchIntegrationTest.java)/**
+ * This tests that filter stage of the pipeline dispatches correctly to guice-managed filters.
+ *
+ * <p>WARNING(dhanji): Non-parallelizable test =(
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+FilterPipelineTest (/extensions/servlet/test/com/google/inject/servlet/FilterPipelineTest.java)/**
+ * This is a basic whitebox test that verifies the glue between GuiceFilter and
+ * ManagedFilterPipeline is working.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+InjectedFilterPipelineTest (/extensions/servlet/test/com/google/inject/servlet/InjectedFilterPipelineTest.java)/**
+ * Exactly the same as {@linkplain com.google.inject.servlet.FilterPipelineTest} except that we test
+ * that the static pipeline is not used.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+InvalidScopeBindingTest (/extensions/servlet/test/com/google/inject/servlet/InvalidScopeBindingTest.java)/**
+ * Ensures that an error is thrown if a Servlet or Filter is bound under any scope other than
+ * singleton, explicitly.
+ *
+ * @author dhanji@gmail.com
+ */
+MultiModuleDispatchIntegrationTest (/extensions/servlet/test/com/google/inject/servlet/MultiModuleDispatchIntegrationTest.java)/**
+ * This tests that filter stage of the pipeline dispatches correctly to guice-managed filters with
+ * multiple modules.
+ *
+ * <p>WARNING(dhanji): Non-parallelizable test =(
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+MultipleServletInjectorsTest (/extensions/servlet/test/com/google/inject/servlet/MultipleServletInjectorsTest.java)/**
+ * This gorgeous test asserts that multiple servlet pipelines can run in the SAME JVM. booya.
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+ServletDefinitionPathsTest (/extensions/servlet/test/com/google/inject/servlet/ServletDefinitionPathsTest.java)/**
+ * Ensures servlet spec compliance for CGI-style variables and general path/pattern matching.
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail com)
+ */
+ServletDefinitionTest (/extensions/servlet/test/com/google/inject/servlet/ServletDefinitionTest.java)/**
+ * Basic unit test for lifecycle of a ServletDefinition (wrapper).
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail com)
+ */
+ServletDispatchIntegrationTest (/extensions/servlet/test/com/google/inject/servlet/ServletDispatchIntegrationTest.java)/**
+ * Tests the FilterPipeline that dispatches to guice-managed servlets, is a full integration test,
+ * with a real injector.
+ *
+ * @author Dhanji R. Prasanna (dhanji gmail com)
+ */
+ServletModuleTest (/extensions/servlet/test/com/google/inject/servlet/ServletModuleTest.java)/**
+ * Tests for ServletModule, to ensure it captures bindings correctly.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ServletPipelineRequestDispatcherTest (/extensions/servlet/test/com/google/inject/servlet/ServletPipelineRequestDispatcherTest.java)/**
+ * Tests forwarding and inclusion (RequestDispatcher actions from the servlet spec).
+ *
+ * @author Dhanji R. Prasanna (dhanji@gmail com)
+ */
+ServletScopesTest (/extensions/servlet/test/com/google/inject/servlet/ServletScopesTest.java)/**
+ * Tests for {@link ServletScopes}.
+ *
+ * @author forster@google.com (Mike Forster)
+ */
+ServletSpiVisitor (/extensions/servlet/test/com/google/inject/servlet/ServletSpiVisitor.java)/**
+ * A visitor for testing the servlet SPI extension.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ServletTest (/extensions/servlet/test/com/google/inject/servlet/ServletTest.java)/** @author crazybob@google.com (Bob Lee) */
+ServletTestUtils (/extensions/servlet/test/com/google/inject/servlet/ServletTestUtils.java)/**
+ * Utilities for servlet tests.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ServletUtilsTest (/extensions/servlet/test/com/google/inject/servlet/ServletUtilsTest.java)/**
+ * Unit test for the servlet utility class.
+ *
+ * @author ntang@google.com (Michael Tang)
+ */
+VarargsFilterDispatchIntegrationTest (/extensions/servlet/test/com/google/inject/servlet/VarargsFilterDispatchIntegrationTest.java)/**
+ * This tests that filter stage of the pipeline dispatches correctly to guice-managed filters.
+ *
+ * <p>WARNING(dhanji): Non-parallelizable test =(
+ *
+ * @author dhanji@gmail.com (Dhanji R. Prasanna)
+ */
+VarargsServletDispatchIntegrationTest (/extensions/servlet/test/com/google/inject/servlet/VarargsServletDispatchIntegrationTest.java)/**
+ * Tests the FilterPipeline that dispatches to guice-managed servlets, is a full integration test,
+ * with a real injector.
+ *
+ * @author Dhanji R. Prasanna (dhanji gmail com)
+ */
+SpringIntegration (/extensions/spring/src/com/google/inject/spring/SpringIntegration.java)/**
+ * Integrates Guice with Spring.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+SpringIntegrationTest (/extensions/spring/test/com/google/inject/spring/SpringIntegrationTest.java)/** @author crazybob@google.com (Bob Lee) */
+Counter (/extensions/struts2/example/src/com/google/inject/struts2/example/Counter.java)/** Session-scoped counter. */
+ExampleListener (/extensions/struts2/example/src/com/google/inject/struts2/example/ExampleListener.java)/**
+ * Example application module.
+ *
+ * @author crazybob@google.com (Bob Lee)
+ */
+Main (/extensions/struts2/example/src/com/google/inject/struts2/example/Main.java)/** Starts the example web server on port 8080. Run from "./struts2/example". */
+GuiceObjectFactory (/extensions/struts2/src/com/google/inject/struts2/GuiceObjectFactory.java)/** @deprecated Use {@link com.google.inject.struts2.Struts2Factory} instead. */
+Struts2Factory (/extensions/struts2/src/com/google/inject/struts2/Struts2Factory.java)/**
+ * Cleanup up version from Bob's GuiceObjectFactory. Now works properly with GS2 and fixes several
+ * bugs.
+ *
+ * @author dhanji@gmail.com
+ * @author benmccann.com
+ */
+Struts2GuicePluginModule (/extensions/struts2/src/com/google/inject/struts2/Struts2GuicePluginModule.java)/**
+ * Initializes the Struts 2 Guice Plugin. Must be added to the injector returned by {@link
+ * com.google.inject.servlet.GuiceServletContextListener#getInjector}.
+ *
+ * @author benmccann.com
+ */
+Struts2FactoryTest (/extensions/struts2/test/com/google/inject/struts2/Struts2FactoryTest.java)/**
+ * Test for Struts2Factory
+ *
+ * @author benmccann.com
+ */
+BoundFieldInfo (/extensions/testlib/src/com/google/inject/testing/fieldbinder/BoundFieldModule.java)/** Information about a field bound by {@link BoundFieldModule}. */
+BoundFieldModule (/extensions/testlib/src/com/google/inject/testing/fieldbinder/BoundFieldModule.java)/**
+ * Automatically creates Guice bindings for fields in an object annotated with {@link Bind}.
+ *
+ * <p>This module is intended for use in tests to reduce the code needed to bind local fields
+ * (usually mocks) for injection.
+ *
+ * <p>The following rules are followed in determining how fields are bound using this module:
+ *
+ * <ul>
+ *   <li>For each {@link Bind} annotated field of an object and its superclasses, this module will
+ *       bind that field's type to that field's value at injector creation time. This includes both
+ *       instance and static fields.
+ *   <li>If {@link Bind#to} is specified, the field's value will be bound to the class specified by
+ *       {@link Bind#to} instead of the field's actual type.
+ *   <li>If {@link Bind#lazy} is true, this module will delay reading the value from the field until
+ *       injection time, allowing the field's value to be reassigned during the course of a test's
+ *       execution.
+ *   <li>If a {@link BindingAnnotation} or {@link javax.inject.Qualifier} is present on the field,
+ *       that field will be bound using that annotation via {@link
+ *       AnnotatedBindingBuilder#annotatedWith}. For example, {@code
+ *       bind(Foo.class).annotatedWith(BarAnnotation.class).toInstance(theValue)}. It is an error to
+ *       supply more than one {@link BindingAnnotation} or {@link javax.inject.Qualifier}.
+ *   <li>If the field is of type {@link Provider}, the field's value will be bound as a {@link
+ *       Provider} using {@link LinkedBindingBuilder#toProvider} to the provider's parameterized
+ *       type. For example, {@code Provider<Integer>} binds to {@link Integer}. Attempting to bind a
+ *       non-parameterized {@link Provider} without a {@link Bind#to} clause is an error.
+ * </ul>
+ *
+ * <p>Example use:
+ *
+ * <pre><code>
+ * public class TestFoo {
+ *   // bind(new TypeLiteral{@code <List<Object>>}() {}).toInstance(listOfObjects);
+ *   {@literal @}Bind private List{@code <Object>} listOfObjects = Lists.of();
+ *
+ *   // private String userName = "string_that_changes_over_time";
+ *   // bind(String.class).toProvider(new Provider() { public String get() { return userName; }});
+ *   {@literal @}Bind(lazy = true) private String userName;
+ *
+ *   // bind(SuperClass.class).toInstance(aSubClass);
+ *   {@literal @}Bind(to = SuperClass.class) private SubClass aSubClass = new SubClass();
+ *
+ *   // bind(String.class).annotatedWith(MyBindingAnnotation.class).toInstance(myString);
+ *   {@literal @}Bind
+ *   {@literal @}MyBindingAnnotation
+ *   private String myString = "hello";
+ *
+ *   // bind(Object.class).toProvider(myProvider);
+ *   {@literal @}Bind private Provider{@code <Object>} myProvider = getProvider();
+ *
+ *   {@literal @}Before public void setUp() {
+ *     Guice.createInjector(BoundFieldModule.of(this)).injectMembers(this);
+ *   }
+ * }
+ * </code></pre>
+ *
+ * @see Bind
+ * @author eatnumber1@google.com (Russ Harmon)
+ */
+CheckedProviderSubject (/extensions/testlib/src/com/google/inject/testing/throwingproviders/CheckedProviderSubject.java)/**
+ * Truth {@link Subject} for use with {@link CheckedProvider} classes.
+ *
+ * @author eatnumber1@google.com (Russ Harmon)
+ */
+BoundFieldModuleTest (/extensions/testlib/test/com/google/inject/testing/fieldbinder/BoundFieldModuleTest.java)/** Unit tests for {@link BoundFieldModule}. */
+CheckedProviderSubjectTest (/extensions/testlib/test/com/google/inject/testing/throwingproviders/CheckedProviderSubjectTest.java)/**
+ * Unit tests for {@link CheckedProviderSubject}.
+ *
+ * @author eatnumber1@google.com (Russ Harmon)
+ */
+CheckedProvider (/extensions/throwingproviders/src/com/google/inject/throwingproviders/CheckedProvider.java)/**
+ * Alternative to the Guice {@link com.google.inject.Provider} that throws a checked Exception.
+ * Users may not inject {@code T} directly.
+ *
+ * <p>This interface must be extended to use application-specific exception types. Such
+ * subinterfaces may not define new methods, but may narrow the exception type.
+ *
+ * <pre>
+ * public interface RemoteProvider&lt;T&gt; extends CheckedProvider&lt;T&gt; {
+ *   T get() throws CustomExceptionOne, CustomExceptionTwo;
+ * }
+ * </pre>
+ *
+ * <p>When this type is bound using {@link ThrowingProviderBinder}, the value returned or exception
+ * thrown by {@link #get} will be scoped. As a consequence, {@link #get} will invoked at most once
+ * within each scope.
+ *
+ * @since 3.0
+ */
+CheckedProviderMethod (/extensions/throwingproviders/src/com/google/inject/throwingproviders/CheckedProviderMethod.java)/**
+ * A provider that invokes a method and returns its result.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+LogProvider (/extensions/throwingproviders/src/com/google/inject/throwingproviders/CheckedProviderMethodsModule.java)/** A provider that returns a logger based on the method name. */
+CheckedProviderMethodsModule (/extensions/throwingproviders/src/com/google/inject/throwingproviders/CheckedProviderMethodsModule.java)/**
+ * Creates bindings to methods annotated with {@literal @}{@link CheckedProvides}. Use the scope and
+ * binding annotations on the provider method to configure the binding.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+CheckedProviders (/extensions/throwingproviders/src/com/google/inject/throwingproviders/CheckedProviders.java)/**
+ * Static utility methods for creating and working with instances of {@link CheckedProvider}.
+ *
+ * @author eatnumber1@google.com (Russ Harmon)
+ * @since 4.2
+ */
+CheckedProviderWithDependencies (/extensions/throwingproviders/src/com/google/inject/throwingproviders/CheckedProviderWithDependencies.java)/**
+ * A checked provider with dependencies, so {@link HasDependencies} can be implemented when using
+ * the {@link SecondaryBinder#using} methods.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+CheckedProvideUtils (/extensions/throwingproviders/src/com/google/inject/throwingproviders/CheckedProvideUtils.java)/**
+ * Utilities for the throwing provider module.
+ *
+ * @author sameb@google.com (Sam Berlin)
+ */
+ProviderChecker (/extensions/throwingproviders/src/com/google/inject/throwingproviders/ProviderChecker.java)/** Helper methods to verify the correctness of CheckedProvider interfaces. */
+ThrowingProvider (/extensions/throwingproviders/src/com/google/inject/throwingproviders/ThrowingProvider.java)/**
+ * Alternative to the Guice {@link com.google.inject.Provider} that throws a checked Exception.
+ * Users may not inject {@code T} directly.
+ *
+ * <p>This interface must be extended to use application-specific exception types. Such
+ * subinterfaces may not define new methods:
+ *
+ * <pre>
+ * public interface RemoteProvider&lt;T&gt; extends ThrowingProvider&lt;T, RemoteException&gt; { }
+ * </pre>
+ *
+ * <p>When this type is bound using {@link ThrowingProviderBinder}, the value returned or exception
+ * thrown by {@link #get} will be scoped. As a consequence, {@link #get} will invoked at most once
+ * within each scope.
+ *
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @deprecated use {@link CheckedProvider} instead.
+ */
+Result (/extensions/throwingproviders/src/com/google/inject/throwingproviders/ThrowingProviderBinder.java)/**
+   * Represents the returned value from a call to {@link CheckedProvider#get()}. This is the value
+   * that will be scoped by Guice.
+   */
+ResultException (/extensions/throwingproviders/src/com/google/inject/throwingproviders/ThrowingProviderBinder.java)/**
+   * RuntimeException class to wrap exceptions from the checked provider. The regular guice provider
+   * can throw it and the checked provider proxy extracts the underlying exception and rethrows it.
+   */
+ThrowingProviderBinder (/extensions/throwingproviders/src/com/google/inject/throwingproviders/ThrowingProviderBinder.java)/**
+ * Builds a binding for a {@link CheckedProvider}.
+ *
+ * <p>You can use a fluent API and custom providers:
+ *
+ * <pre><code>ThrowingProviderBinder.create(binder())
+ *    .bind(RemoteProvider.class, Customer.class)
+ *    .to(RemoteCustomerProvider.class)
+ *    .in(RequestScope.class);
+ * </code></pre>
+ *
+ * or, you can use throwing provider methods:
+ *
+ * <pre><code>class MyModule extends AbstractModule {
+ *   configure() {
+ *     install(ThrowingProviderBinder.forModule(this));
+ *   }
+ *
+ *   {@literal @}CheckedProvides(RemoteProvider.class)
+ *   {@literal @}RequestScope
+ *   Customer provideCustomer(FlakyCustomerCreator creator) throws RemoteException {
+ *     return creator.getCustomerOrThrow();
+ *   }
+ * }
+ * </code></pre>
+ *
+ * You also can declare that a CheckedProvider construct a particular class whose constructor throws
+ * an exception:
+ *
+ * <pre><code>ThrowingProviderBinder.create(binder())
+ *    .bind(RemoteProvider.class, Customer.class)
+ *    .providing(CustomerImpl.class)
+ *    .in(RequestScope.class);
+ * </code></pre>
+ *
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @author sameb@google.com (Sam Berlin)
+ */
+CheckedProviderMethodsModuleTest (/extensions/throwingproviders/test/com/google/inject/throwingproviders/CheckedProviderMethodsModuleTest.java)/** Test methods for {@link CheckedProviderMethodsModule}. */
+CheckedProvidersTest (/extensions/throwingproviders/test/com/google/inject/throwingproviders/CheckedProvidersTest.java)/**
+ * Unit tests for {@link CheckedProviders}.
+ *
+ * @author eatnumber1@google.com (Russ Harmon)
+ */
+CheckedProviderTest (/extensions/throwingproviders/test/com/google/inject/throwingproviders/CheckedProviderTest.java)/**
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ * @author sameb@google.com (Sam Berlin)
+ */
+TestScope (/extensions/throwingproviders/test/com/google/inject/throwingproviders/TestScope.java)/**
+ * A simple scope that can be explicitly reset.
+ *
+ * @author jmourits@google.com (Jerome Mourits)
+ */
+ThrowingProviderTest (/extensions/throwingproviders/test/com/google/inject/throwingproviders/ThrowingProviderTest.java)/**
+ * @author jmourits@google.com (Jerome Mourits)
+ * @author jessewilson@google.com (Jesse Wilson)
+ */
+Foo (/jdk8-tests/test/com/google/inject/jdk8/DefaultMethodInterceptionTest.java)/** Interface with a default method annotated to be intercepted. */
+NonOverridingFoo (/jdk8-tests/test/com/google/inject/jdk8/DefaultMethodInterceptionTest.java)/** Foo implementation that does not override the default method. */
+BaseClass (/jdk8-tests/test/com/google/inject/jdk8/DefaultMethodInterceptionTest.java)/** A base class defining a method with the same signature as Foo's default method. */
+InheritingFoo (/jdk8-tests/test/com/google/inject/jdk8/DefaultMethodInterceptionTest.java)/** Foo implementation that should use superclass method rather than default method. */
+BaseClass2 (/jdk8-tests/test/com/google/inject/jdk8/DefaultMethodInterceptionTest.java)/**
+   * A base class defining an intercepted method with the same signature as Foo's default method.
+   */
+InheritingFoo2 (/jdk8-tests/test/com/google/inject/jdk8/DefaultMethodInterceptionTest.java)/**
+   * Foo implementation that should use intercepted superclass method rather than default method.
+   */
+DefaultMethodInterceptionTest (/jdk8-tests/test/com/google/inject/jdk8/DefaultMethodInterceptionTest.java)/**
+ * Tests for interception of default methods.
+ *
+ * @author cgdecker@google.com (Colin Decker)
+ */
+Java8LanguageFeatureBindingTest (/jdk8-tests/test/com/google/inject/jdk8/Java8LanguageFeatureBindingTest.java)/**
+ * Test bindings to lambdas, method references, etc.
+ *
+ * @author cgdecker@google.com (Colin Decker)
+ */
+StaticInterfaceMethodsTest (/jdk8-tests/test/com/google/inject/jdk8/StaticInterfaceMethodsTest.java)/**
+ * Test static methods in interfaces.
+ *
+ * @author tavianator@tavianator.com (Tavian Barnes)
+ */
+Null (/lib/build/jdiff/Null.java)/**
+ * This class is used only as a "null" argument for Javadoc when comparing two API files. Javadoc
+ * has to have a package, .java or .class file as an argument, even though JDiff doesn't use it.
+ */
