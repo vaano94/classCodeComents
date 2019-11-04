@@ -1,5 +1,22 @@
 filename,comment_amount,code_amount,ratio,classComment,methodComment,methodBody,constructorComment,constructorBody,fieldComment,fieldBody
-DummySerializerInstance.java,30,54,0.5555555555555556,"/**
+ClassWithComment.java,5,10,0.5," just some comment class","/**
+ * But I should
+ */
+ 
+","{
+} 
+",,,,
+ClassWithSingleQuote.java,21,6,3.5,"
+ * Single quote class.
+ * Single quote class.
+ *
+ ",,,,,,
+DummySerializerInstance.java,30,54,0.5555555555555556,"
+ * Unfortunately, we need a serializer instance in order to construct a DiskBlockObjectWriter.
+ * Our shuffle write path doesn't actually use this serializer (since we end up calling the
+ * `write() OutputStream methods), but DiskBlockObjectWriter still calls some methods on it. To work
+ * around this, we pass a dummy no-op serializer.
+ /**
  * Unfortunately, we need a serializer instance in order to construct a DiskBlockObjectWriter.
  * Our shuffle write path doesn't actually use this serializer (since we end up calling the
  * `write() OutputStream methods), but DiskBlockObjectWriter still calls some methods on it. To work
@@ -7,11 +24,11 @@ DummySerializerInstance.java,30,54,0.5555555555555556,"/**
  */
 
 ","/**
-   * This is a dumb comment
-   * This is a dumb comment
-   * This is a dumb comment
-   * This is a dumb comment
-   */
+ * This is a dumb comment
+ * This is a dumb comment
+ * This is a dumb comment
+ * This is a dumb comment
+ */
  
 ","{
     return new SerializationStream() {
@@ -43,40 +60,44 @@ DummySerializerInstance.java,30,54,0.5555555555555556,"/**
     };
 } 
 ",,,,
-ShuffleDriverComponents.java,46,10,4.6,"/**
+LocalDiskShuffleExecutorComponents.java,16,58,0.27586206896551724,,,,,,,
+ShuffleDriverComponents.java,46,10,4.6,"
+ * :: Private ::
+ * An interface for building shuffle support modules for the Driver.
+ /**
  * :: Private ::
  * An interface for building shuffle support modules for the Driver.
  */
 
 ","/**
-   * Called once in the driver to bootstrap this module that is specific to this application.
-   * This method is called before submitting executor requests to the cluster manager.
-   *
-   * This method should prepare the module with its shuffle components i.e. registering against
-   * an external file servers or shuffle services, or creating tables in a shuffle
-   * storage data database.
-   *
-   * @return additional SparkConf settings necessary for initializing the executor components.
-   * This would include configurations that cannot be statically set on the application, like
-   * the host:port of external services for shuffle storage.
-   */
+ * Called once in the driver to bootstrap this module that is specific to this application.
+ * This method is called before submitting executor requests to the cluster manager.
+ *
+ * This method should prepare the module with its shuffle components i.e. registering against
+ * an external file servers or shuffle services, or creating tables in a shuffle
+ * storage data database.
+ *
+ * @return additional SparkConf settings necessary for initializing the executor components.
+ * This would include configurations that cannot be statically set on the application, like
+ * the host:port of external services for shuffle storage.
+ */
  
 /**
-   * Called once at the end of the Spark application to clean up any existing shuffle state.
-   */
+ * Called once at the end of the Spark application to clean up any existing shuffle state.
+ */
  
 /**
-   * Called once per shuffle id when the shuffle id is first generated for a shuffle stage.
-   *
-   * @param shuffleId The unique identifier for the shuffle stage.
-   */
+ * Called once per shuffle id when the shuffle id is first generated for a shuffle stage.
+ *
+ * @param shuffleId The unique identifier for the shuffle stage.
+ */
  
 /**
-   * Removes shuffle data associated with the given shuffle.
-   *
-   * @param shuffleId The unique identifier for the shuffle stage.
-   * @param blocking Whether this call should block on the deletion of the data.
-   */
+ * Removes shuffle data associated with the given shuffle.
+ *
+ * @param shuffleId The unique identifier for the shuffle stage.
+ * @param blocking Whether this call should block on the deletion of the data.
+ */
  
 ","initializeApplication 
 cleanupApplication 

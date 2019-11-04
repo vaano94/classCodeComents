@@ -1,6 +1,8 @@
 package edu.unibe.kravchenko.extractor;
 
 import com.github.javaparser.JavaParser;
+import com.github.javaparser.StaticJavaParser;
+import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.Node;
 import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
 import com.github.javaparser.ast.body.ConstructorDeclaration;
@@ -9,6 +11,7 @@ import com.github.javaparser.ast.body.FieldDeclaration;
 import com.github.javaparser.ast.body.MethodDeclaration;
 import com.github.javaparser.ast.comments.Comment;
 import com.github.javaparser.ast.comments.JavadocComment;
+import com.github.javaparser.ast.comments.LineComment;
 import com.github.javaparser.ast.stmt.BlockStmt;
 import com.github.javaparser.ast.visitor.VoidVisitorAdapter;
 import com.google.common.base.Strings;
@@ -86,20 +89,20 @@ public class ClassesJavadocExtractor {
                 File csvProjectStatistics = new File("C:\\Users\\vaano\\IdeaProjects\\ClassCodeComments\\src\\main\\resources" + "test.csv");
                 BufferedWriter writer = Files.newWriter(csvProjectStatistics, Charset.forName("UTF-8"));
                 CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT
-                    .withHeader("filename", "comment_amount", "code_amount", "ratio", "classComment", "methodComment", "methodBody", "constructorComment", "constructorBody", "fieldComment", "fieldBody"));
+                        .withHeader("filename", "comment_amount", "code_amount", "ratio", "classComment", "methodComment", "methodBody", "constructorComment", "constructorBody", "fieldComment", "fieldBody"));
 
-                for (CSVRecord r: recordListWithComments) {
+                for (CSVRecord r : recordListWithComments) {
                     Matcher m = pattern.matcher(r.get(0));
                     if (m.find()) {
                         String classFileName = m.group(0);
-                        for (CSVRecord processed: csvRecordsProcessed) {
+                        for (CSVRecord processed : csvRecordsProcessed) {
                             if (processed.get(1).contains(classFileName)) {
 
                                 String commentAmount = processed.get(3);
                                 String codeAmount = processed.get(4);
-                                csvPrinter.printRecord(classFileName, commentAmount, codeAmount, Double.valueOf(commentAmount)/Double.valueOf(codeAmount),
-                                    r.get(1), r.get(2), r.get(3), r.get(4), r.get(5), r.get(6), r.get(7)
-                                        );
+                                csvPrinter.printRecord(classFileName, commentAmount, codeAmount, Double.valueOf(commentAmount) / Double.valueOf(codeAmount),
+                                        r.get(1), r.get(2), r.get(3), r.get(4), r.get(5), r.get(6), r.get(7)
+                                );
                                 break;
                             }
                         }
@@ -134,6 +137,8 @@ public class ClassesJavadocExtractor {
     public StringWriter readComment(String scanDir, String folder) {
         try {
 
+            JavaParser javaParser = new JavaParser();
+
             File projectDir = new File(scanDir);
             Path directory;
 
@@ -152,6 +157,11 @@ public class ClassesJavadocExtractor {
 
             new DirExplorer((level, path, file) -> path.endsWith(".java"), (level, path, file) -> {
                 try {
+
+                    CompilationUnit cu = StaticJavaParser.parse(file);
+                    cu.getAllContainedComments();
+
+
                     final StringBuilder methodBodyBuilder = new StringBuilder();
                     final StringBuilder methodCommentBuilder = new StringBuilder();
                     final StringBuilder constructorBodyBuilder = new StringBuilder();
@@ -160,6 +170,25 @@ public class ClassesJavadocExtractor {
                     final StringBuilder fieldCommentBuilder = new StringBuilder();
                     final StringBuilder fieldBodyBuilder = new StringBuilder();
 
+                    List<String> comments = cu.getAllContainedComments()
+                            .stream()
+                            .filter(e -> e.getCommentedNode().get() instanceof ClassOrInterfaceDeclaration)
+                            .map(Comment::getContent)
+                            .collect(Collectors.toList());
+                    classCommentBuilder.append(String.join("|", comments));
+
+
+//                    cu.accept(new VoidVisitorAdapter<Object>() {
+//                        @Override
+//                        public void visit(LineComment lineComment, Object arg) {
+//                            List<String> comments = cu.getAllContainedComments()
+//                                    .stream()
+//                                    .filter(e -> e.getCommentedNode().get() instanceof ClassOrInterfaceDeclaration)
+//                                    .map(Comment::getContent)
+//                                    .collect(Collectors.toList());
+//                            System.out.println(comments);
+//                        }
+//                    }, null);
 
                     new VoidVisitorAdapter<Object>() {
                         @Override
@@ -180,31 +209,31 @@ public class ClassesJavadocExtractor {
                                         constructorCommentBuilder.append(describe.getComment()).append(" \n");
                                         break;
                                     case "field":
-                                        fieldBodyBuilder.append(describe.getBody()).append( "\n");
+                                        fieldBodyBuilder.append(describe.getBody()).append("\n");
                                         fieldCommentBuilder.append(describe.getComment()).append(" \n");
                                         break;
                                     case "class":
                                         metNewClass[0] = true;
                                         firstEntry[0] = true;
                                         classCommentBuilder.append(describe.getComment()).append("\n");
-                                        if (metNewClass[0] && firstEntry[0]) {
-                                            try {
-                                                csvPrinter.printRecord(path, classCommentBuilder.toString(), methodCommentBuilder.toString(), methodBodyBuilder.toString(),
-                                                        constructorCommentBuilder.toString(), constructorBodyBuilder.toString(),
-                                                        fieldCommentBuilder.toString(), fieldBodyBuilder.toString());
-                                                methodBodyBuilder.setLength(0);
-                                                methodCommentBuilder.setLength(0);
-                                                constructorBodyBuilder.setLength(0);
-                                                constructorCommentBuilder.setLength(0);
-                                                classCommentBuilder.setLength(0);
-                                                fieldCommentBuilder.setLength(0);
-                                                fieldBodyBuilder.setLength(0);
-                                                metNewClass[0] = false;
-                                            } catch (IOException e) {
-                                                e.printStackTrace();
-                                            }
-                                        }
-                                        firstEntry[0] = true;
+//                                        if (metNewClass[0] && firstEntry[0]) {
+//                                            try {
+//                                                csvPrinter.printRecord(path, classCommentBuilder.toString(), methodCommentBuilder.toString(), methodBodyBuilder.toString(),
+//                                                        constructorCommentBuilder.toString(), constructorBodyBuilder.toString(),
+//                                                        fieldCommentBuilder.toString(), fieldBodyBuilder.toString());
+//                                                methodBodyBuilder.setLength(0);
+//                                                methodCommentBuilder.setLength(0);
+//                                                constructorBodyBuilder.setLength(0);
+//                                                constructorCommentBuilder.setLength(0);
+//                                                classCommentBuilder.setLength(0);
+//                                                fieldCommentBuilder.setLength(0);
+//                                                fieldBodyBuilder.setLength(0);
+//                                                metNewClass[0] = false;
+//                                            } catch (IOException e) {
+//                                                e.printStackTrace();
+//                                            }
+//                                        }
+//                                        firstEntry[0] = true;
                                         break;
                                 }
 
@@ -216,9 +245,29 @@ public class ClassesJavadocExtractor {
 //                            System.out.println(Strings.repeat("=", title.length()));
 //                            System.out.println(comment);
                         }
-                    }.visit(JavaParser.parse(file), null);
+                    }.visit(javaParser.parse(file).getResult().get(), null);
+
+
+                    try {
+                        csvPrinter.printRecord(path, classCommentBuilder.toString(), methodCommentBuilder.toString(), methodBodyBuilder.toString(),
+                                constructorCommentBuilder.toString(), constructorBodyBuilder.toString(),
+                                fieldCommentBuilder.toString(), fieldBodyBuilder.toString());
+                        methodBodyBuilder.setLength(0);
+                        methodCommentBuilder.setLength(0);
+                        constructorBodyBuilder.setLength(0);
+                        constructorCommentBuilder.setLength(0);
+                        classCommentBuilder.setLength(0);
+                        fieldCommentBuilder.setLength(0);
+                        fieldBodyBuilder.setLength(0);
+                        metNewClass[0] = false;
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+
+                    firstEntry[0] = true;
+
                 } catch (IOException e) {
-                    new RuntimeException(e);
+                    e.printStackTrace();
                 }
             }).explore(projectDir);
             return out;
@@ -298,9 +347,7 @@ public class ClassesJavadocExtractor {
             nodeContent.setComment(fieldDeclaration.getComment().map(Comment::toString).orElse(""));
             nodeContent.setType("field");
             return nodeContent;
-        }
-
-        else {
+        } else {
             System.out.println("This is another declaration" + node);
         }
 
