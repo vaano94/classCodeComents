@@ -29,8 +29,8 @@ import org.apache.spark.unsafe.Platform;
 
 /**
  * Unfortunately, we need a serializer instance in order to construct a DiskBlockObjectWriter.
- * Our shuffle write path doesn't actually use this serializer (since we end up calling the
- * `write() OutputStream methods), but DiskBlockObjectWriter still calls some methods on it. To work
+ * Our shuffle write path doesn't actually use this serializer (since we end up calling the @author
+ * `write() OutputStream methods), but DiskBlockObjectWriter still calls some methods on it. To work @version
  * around this, we pass a dummy no-op serializer.
  */
 @Private

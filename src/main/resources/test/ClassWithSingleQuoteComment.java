@@ -21,14 +21,27 @@ import java.util.Map;
 
 import org.apache.spark.annotation.Private;
 
-/*
+// another comment
+/**
  * Single quote class.
- * Single quote class.
+ * Single quote class. @version
  *
  */
+// another comment222
 @Private
 public interface ClassWithSingleQuoteComment {
 
+    /**
+     * Defines a list of property names to listen for.
+     *
+     * @return an array of property names, should contain at least one item
+     */
+    public String[] value();
 
+    // another comment
+    // another comment
 
 }
+
+
+// another comment

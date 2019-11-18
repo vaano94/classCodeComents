@@ -1,0 +1,42 @@
+Results for directory org.eclipse.cdt
+Amount of classes: 9129
+authorComments in dangling comments: 4
+authorComments in JavaDoc comments: 755
+versionComments in dangling comments: 0
+versionComments in JavaDoc comments: 6
+
+Results for directory swagger-java-spring-example\class-comment-extractor\src\main\resources\spark
+Amount of classes: 93
+authorComments in dangling comments: 0
+authorComments in JavaDoc comments: 0
+versionComments in dangling comments: 0
+versionComments in JavaDoc comments: 0
+
+Results for directory guava
+Amount of classes: 3155
+authorComments in dangling comments: 31
+authorComments in JavaDoc comments: 2395
+versionComments in dangling comments: 0
+versionComments in JavaDoc comments: 0
+
+Results for directory hadoop
+Amount of classes: 12494
+authorComments in dangling comments: 0
+authorComments in JavaDoc comments: 0
+versionComments in dangling comments: 0
+versionComments in JavaDoc comments: 0
+
+Results for directory guice
+Amount of classes: 569
+authorComments in dangling comments: 1
+authorComments in JavaDoc comments: 373
+versionComments in dangling comments: 0
+versionComments in JavaDoc comments: 0
+
+Results for directory vaadin
+Amount of classes: 5867
+authorComments in dangling comments: 2
+authorComments in JavaDoc comments: 1759
+versionComments in dangling comments: 0
+versionComments in JavaDoc comments: 0
+

@@ -4,6 +4,8 @@ import java.util.Map;
 
 import org.apache.spark.annotation.Private;
 
+// more more more
+// more single commentt @author @version
 // just some comment class
 @Private
 public class ClassWithSomeComment {
