@@ -1,42 +1,69 @@
 Results for directory org.eclipse.cdt
-Amount of classes: 9129
+Amount of classes: 9128
+Amount of classes or interfaces without comment: 923
 authorComments in dangling comments: 4
 authorComments in JavaDoc comments: 755
 versionComments in dangling comments: 0
 versionComments in JavaDoc comments: 6
+Overall class comment length is: 1465350
+Average class comment length is : 178.59232175502743
+Overall comment lines: 32871
+Average class comment lines amount is : 4.0062157221206585
 
 Results for directory swagger-java-spring-example\class-comment-extractor\src\main\resources\spark
-Amount of classes: 93
+Amount of classes: 82
+Amount of or interfaces without comment: 39
 authorComments in dangling comments: 0
 authorComments in JavaDoc comments: 0
 versionComments in dangling comments: 0
 versionComments in JavaDoc comments: 0
 
 Results for directory guava
-Amount of classes: 3155
-authorComments in dangling comments: 31
+Amount of classes: 3119
+Amount of classes or interfaces without comment: 206
+authorComments in dangling comments: 43
 authorComments in JavaDoc comments: 2395
 versionComments in dangling comments: 0
 versionComments in JavaDoc comments: 0
+Overall class comment length is: 1814337
+Average class comment length is : 622.8414006179197
+Overall comment lines: 34316
+Average class comment lines amount is : 11.78029522828699
 
-Results for directory hadoop
-Amount of classes: 12494
-authorComments in dangling comments: 0
-authorComments in JavaDoc comments: 0
-versionComments in dangling comments: 0
-versionComments in JavaDoc comments: 0
 
 Results for directory guice
-Amount of classes: 569
+Amount of classes: 552
+Amount of classes or interfaces without comment: 45
 authorComments in dangling comments: 1
 authorComments in JavaDoc comments: 373
 versionComments in dangling comments: 0
 versionComments in JavaDoc comments: 0
+Overall class comment length is: 154124
+Average class comment length is : 303.99211045364893
+Overall comment lines: 3422
+Average class comment lines amount is : 6.7495069033530575
+
+
+Results for directory hadoop
+Amount of classes: 11795
+Amount of classes or interfaces without comment: 1263
+authorComments in dangling comments: 0
+authorComments in JavaDoc comments: 0
+versionComments in dangling comments: 0
+versionComments in JavaDoc comments: 0
+Overall class comment length is: 2058152
+Average class comment length is : 195.41891378655527
+Overall comment lines: 43871
+Average class comment lines amount is : 4.165495632358526
 
 Results for directory vaadin
 Amount of classes: 5867
+Amount of classes or interfaces without comment: 2243
 authorComments in dangling comments: 2
 authorComments in JavaDoc comments: 1759
 versionComments in dangling comments: 0
 versionComments in JavaDoc comments: 0
-
+Overall class comment length is: 983027
+Average class comment length is : 271.2546909492274
+Overall comment lines: 30720
+Average class comment lines amount is : 8.47682119205298
