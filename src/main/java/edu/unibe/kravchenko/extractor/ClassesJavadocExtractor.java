@@ -73,14 +73,7 @@ public class ClassesJavadocExtractor {
         // test directories/
         scanPaths.put(new ClassPathResource("test").getFile().getPath(), "test_new");
         scanPaths.put(new ClassPathResource("classAmountTest").getFile().getPath(), "classAmountTest");
-
-        scanPaths.put("C:\\Users\\vaano\\IdeaProjects\\swagger-java-spring-example\\class-comment-extractor\\src\\main\\resources\\spark", "spark");
-        scanPaths.put("C:\\Users\\vaano\\IdeaProjects\\org.eclipse.cdt", "eclipseCdt");
-        scanPaths.put("C:\\Users\\vaano\\IdeaProjects\\guava", "guava");
-        scanPaths.put("C:\\Users\\vaano\\IdeaProjects\\java_comment_projects\\hadoop", "hadoop");
-        scanPaths.put("C:\\Users\\vaano\\IdeaProjects\\guice", "guice");
-        scanPaths.put("C:\\Users\\vaano\\IdeaProjects\\framework", "vaadin");
-
+        
         // project directories
         scanPaths.put(new ClassPathResource("spark").getFile().getPath(), "spark");
         scanPaths.put(new ClassPathResource("org.eclipse.cdt").getFile().getPath(), "eclipseCdt");
@@ -379,7 +372,7 @@ public class ClassesJavadocExtractor {
             CSVParser parser = new CSVParser(in, CSVFormat.EXCEL);
             List<CSVRecord> list = parser.getRecords();
             return list;
-            
+
         } catch (IOException e) {
             e.printStackTrace();
         }
